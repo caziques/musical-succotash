@@ -1,0 +1,16 @@
+[Unit]
+Description=Sunsynk Inverter Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/sunsynk-dashboard
+ExecStart=/opt/sunsynk-dashboard/venv/bin/python /opt/sunsynk-dashboard/main.py -c /opt/sunsynk-dashboard/config.yaml
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

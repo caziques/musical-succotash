@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inverter Dashboard - Automation</title>
+  <style>
+    :root { --bg:#0a0e14; --surface:#12171f; --surface2:#181e28; --border:#252b36; --text:#e2e8f0; --muted:#7c8798; --accent:#388bfd; --green:#2ea043; --red:#f85149; --yellow:#d2991d; --sidebar-w:200px; --font-scale:14px; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; display:flex; min-height:100vh; font-size:var(--font-scale); }
+    a { color:var(--accent); text-decoration:none; }
+
+    .sidebar { width:var(--sidebar-w); background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; }
+    .sidebar-brand { padding:16px 18px 12px; border-bottom:1px solid var(--border); }
+    .sidebar-brand h2 { font-size:15px; font-weight:700; color:var(--accent); }
+    .sidebar-brand .tagline { font-size:11px; color:var(--muted); margin-top:2px; }
+    .sidebar-nav { flex:1; overflow-y:auto; padding:8px 0; }
+    .sidebar-nav .nav-section { padding:10px 18px 4px; font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
+    .sidebar-nav a { display:flex; align-items:center; gap:9px; padding:8px 18px; font-size:13px; color:var(--muted); border-left:2px solid transparent; transition:all 0.15s; cursor:pointer; text-decoration:none; outline:none; }
+    .sidebar-nav a:hover { color:var(--text); background:var(--surface2); }
+    .sidebar-nav a:focus { color:var(--text); background:var(--surface2); }
+    .sidebar-nav a.active { color:var(--accent); border-left-color:var(--accent); background:var(--surface2); }
+    .sidebar-footer { padding:10px 18px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); }
+
+    .main { margin-left:var(--sidebar-w); flex:1; padding:18px 22px; min-width:0; }
+    .section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+    .section-header h1 { font-size:20px; font-weight:700; }
+    .btn { background:var(--accent); color:#fff; border:none; padding:7px 16px; border-radius:6px; font-size:13px; cursor:pointer; font-weight:600; }
+    .btn:hover { opacity:0.9; }
+    .btn.small { font-size:11px; padding:4px 10px; }
+    .btn.danger { background:var(--red); }
+    .btn.green { background:var(--green); }
+
+    .panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:16px; }
+    .panel h3 { font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+
+    .form-row { margin-bottom:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .form-row label { font-size:12px; color:var(--muted); min-width:80px; }
+    .form-row input, .form-row select { background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:6px 10px; border-radius:6px; font-size:13px; }
+    .form-row input:focus, .form-row select:focus { border-color:var(--accent); outline:none; }
+    .form-row input[type="text"] { width:200px; }
+    .form-row input[type="number"] { width:100px; }
+
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:8px 10px; font-size:13px; border-bottom:1px solid var(--border); }
+    th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; }
+    .rule-enabled { display:inline-block; width:10px; height:10px; border-radius:50%; }
+    .rule-enabled.on { background:var(--green); }
+    .rule-enabled.off { background:var(--red); }
+
+    .msg { padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:12px; display:none; }
+    .msg.show { display:block; }
+    .msg.ok { background:#0a2f1f; border:1px solid var(--green); color:var(--green); }
+    .msg.err { background:#3d0e0e; border:1px solid var(--red); color:var(--red); }
+
+    [data-theme="light"] { --bg:#f0f2f5; --surface:#ffffff; --surface2:#f7f8fa; --border:#d1d5db; --text:#1f2937; --muted:#6b7280; }
+    [data-theme="light"] .panel { border-color:#e5e7eb; }
+    [data-theme="light"] .msg.ok { background:#d1fae5; color:#065f46; }
+    [data-theme="light"] .msg.err { background:#fee2e2; color:#991b1b; }
+
+    [data-font="small"] { --font-scale: 12px; }
+    [data-font="large"] { --font-scale: 16px; }
+
+    .theme-toggle { padding:8px 14px; }
+    .theme-toggle button { background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; width:100%; }
+
+    @media (max-width:768px) {
+      .sidebar { width:52px; } .sidebar-brand h2, .sidebar-brand .tagline, .sidebar-nav a span { display:none; }
+      .sidebar-nav a { justify-content:center; padding:10px; } .main { margin-left:52px; padding:12px; }
+      :root { --sidebar-w:52px; }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand"><h2>Inverter</h2><div class="tagline">Dashboard</div></div>
+  <nav class="sidebar-nav">
+    <a href="/#overview" class="nav-link"><span class="icon">&#9679;</span><span>My Summary</span></a>
+    <a href="/#power" class="nav-link"><span class="icon">&#9889;</span><span>Power Flow</span></a>
+    <a href="/#battery" class="nav-link"><span class="icon">&#128267;</span><span>Battery</span></a>
+    <a href="/#solar" class="nav-link"><span class="icon">&#9728;</span><span>Solar / PV</span></a>
+    <a href="/#grid" class="nav-link"><span class="icon">&#127760;</span><span>Grid</span></a>
+    <a href="/#energy" class="nav-link"><span class="icon">&#128200;</span><span>Energy & Yield</span></a>
+    <a href="/#totals" class="nav-link"><span class="icon">&#128202;</span><span>Daily Totals</span></a>
+    <a href="/#system" class="nav-link"><span class="icon">&#9881;</span><span>System Health</span></a>
+    <a href="/#automation" id="navAutomation" class="nav-link active" style="display:none"><span class="icon">&#9889;</span><span>Automation</span></a>
+    <a href="/settings" id="navSettings" class="nav-link" style="display:none"><span class="icon">&#9881;</span><span>Settings</span></a>
+    <a href="/logout" class="nav-link"><span class="icon">&#128682;</span><span>Logout</span></a>
+  </nav>
+  <div class="theme-toggle">
+    <button onclick="toggleTheme()"><span id="themeIcon">&#127761;</span> <span id="themeLabel">Dark</span></button>
+  </div>
+  <div class="sidebar-footer">Automation</div>
+</aside>
+
+<main class="main">
+  <div class="section-header"><h1>Automation</h1></div>
+  <div id="msg" class="msg"></div>
+
+  <div class="panel">
+    <h3>New Rule</h3>
+    <div class="form-row">
+      <label>Name</label>
+      <input type="text" id="ruleName" placeholder="e.g. Low battery alert">
+    </div>
+    <div class="form-row">
+      <label>Trigger</label>
+      <span style="font-size:12px;color:var(--muted)">When</span>
+      <select id="triggerField">
+        <option value="battery_soc">Battery SOC</option>
+        <option value="battery_power">Battery Power</option>
+        <option value="grid_power">Grid Power</option>
+        <option value="grid_connected">Grid Connected</option>
+        <option value="load_power">Load Power</option>
+        <option value="pv1_power">PV1 Power</option>
+        <option value="pv2_power">PV2 Power</option>
+      </select>
+      <select id="triggerOp">
+        <option value="lt">&lt; (less than)</option>
+        <option value="gt">&gt; (greater than)</option>
+        <option value="eq">= (equals)</option>
+      </select>
+      <input type="number" id="triggerValue" placeholder="value">
+    </div>
+    <div class="form-row">
+      <label>Action</label>
+      <span style="font-size:12px;color:var(--muted)">Webhook</span>
+      <input type="text" id="actionUrl" placeholder="https://maker.ifttt.com/trigger/...">
+    </div>
+    <div class="form-row">
+      <label>Cooldown</label>
+      <input type="number" id="cooldown" value="300" min="60" style="width:80px">
+      <span style="font-size:12px;color:var(--muted)">seconds between triggers</span>
+    </div>
+    <button class="btn" onclick="addRule()">Add Rule</button>
+  </div>
+
+  <div class="panel">
+    <h3>Google Home / IFTTT Setup</h3>
+    <div class="form-row">
+      <label>IFTTT Key</label>
+      <input type="text" id="iftttKey" placeholder="your IFTTT webhook key" style="width:250px">
+    </div>
+    <div class="form-row">
+      <label>Event Name</label>
+      <input type="text" id="iftttEvent" placeholder="e.g. sunsynk_alert" style="width:200px">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:8px 0 0 88px">
+      <p>1. Go to <a href="https://ifttt.com/maker_webhooks" target="_blank">IFTTT Maker Webhooks</a>, get your key.</p>
+      <p>2. Create an IFTTT applet: <b>Webhook</b> trigger &rarr; <b>Google Home</b> action (e.g. broadcast message).</p>
+      <p>3. Use the webhook URL: <code>https://maker.ifttt.com/trigger/{event}/with/key/{key}</code></p>
+      <p>4. Paste that full URL into the Action field above when creating a rule.</p>
+    </div>
+    <button class="btn" onclick="saveWebhook()">Save</button>
+  </div>
+
+  <div class="panel">
+    <h3>Active Rules</h3>
+    <table>
+      <thead><tr><th>Status</th><th>Name</th><th>Trigger</th><th>Action</th><th>Cooldown</th><th>Last Fired</th><th></th></tr></thead>
+      <tbody id="rulesTable"><tr><td colspan="7" style="color:var(--muted)">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+async function apiFetch(url, opts) {
+  const res = await fetch(url, opts);
+  if(res.status === 401) { window.location.href = '/login'; throw new Error('unauthorized'); }
+  return res;
+}
+function msg(text, cls) {
+  const el = document.getElementById('msg');
+  el.textContent = text; el.className = 'msg show ' + cls;
+  setTimeout(() => el.className = 'msg', 4000);
+}
+
+async function loadAll() {
+  const rules = await apiFetch('/api/rules').then(r=>r.json());
+  document.getElementById('rulesTable').innerHTML = rules.map(r => {
+    const ops = {lt:'&lt;', gt:'&gt;', eq:'='};
+    let triggerLabel = r.trigger_field.replace(/_/g,' ');
+    if(r.trigger_field === 'grid_connected') triggerLabel += ' = ' + (r.trigger_value ? 'Off' : 'On');
+    else triggerLabel += ' ' + (ops[r.trigger_op]||r.trigger_op) + ' ' + r.trigger_value;
+    const lastFired = r.last_fired ? new Date(r.last_fired*1000).toLocaleString() : 'Never';
+    const urlShort = r.action_url.length > 40 ? r.action_url.substring(0,40)+'...' : r.action_url;
+    return `<tr>
+      <td><span class="rule-enabled ${r.enabled?'on':'off'}"></span></td>
+      <td>${r.name}</td>
+      <td>${triggerLabel}</td>
+      <td style="font-size:11px">${urlShort}</td>
+      <td>${r.cooldown_seconds}s</td>
+      <td style="font-size:11px">${lastFired}</td>
+      <td>
+        <button class="btn small ${r.enabled?'danger':'green'}" onclick="toggleRule(${r.id},${!r.enabled})">${r.enabled?'Disable':'Enable'}</button>
+        <button class="btn small danger" onclick="deleteRule(${r.id})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const s = await apiFetch('/api/settings').then(r=>r.json());
+  document.getElementById('iftttKey').value = s.ifttt_key || '';
+  document.getElementById('iftttEvent').value = s.ifttt_event || '';
+}
+
+async function addRule() {
+  const body = {
+    name: document.getElementById('ruleName').value,
+    trigger_field: document.getElementById('triggerField').value,
+    trigger_op: document.getElementById('triggerOp').value,
+    trigger_value: parseFloat(document.getElementById('triggerValue').value) || 0,
+    action_url: document.getElementById('actionUrl').value,
+    cooldown_seconds: parseInt(document.getElementById('cooldown').value) || 300,
+  };
+  if(!body.name || !body.action_url) { msg('Name and Action URL are required.', 'err'); return; }
+  const res = await apiFetch('/api/rules', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  if(res.ok) { msg('Rule added.', 'ok'); loadAll(); }
+  else msg('Failed to add rule.', 'err');
+}
+
+async function toggleRule(id, enabled) {
+  await apiFetch('/api/rules/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled})});
+  loadAll();
+}
+
+async function deleteRule(id) {
+  if(!confirm('Delete this rule?')) return;
+  await apiFetch('/api/rules/'+id, {method:'DELETE'});
+  msg('Rule deleted.', 'ok');
+  loadAll();
+}
+
+async function saveWebhook() {
+  const body = {
+    ifttt_key: document.getElementById('iftttKey').value,
+    ifttt_event: document.getElementById('iftttEvent').value,
+  };
+  await apiFetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  msg('Webhook settings saved.', 'ok');
+}
+
+function initTheme() {
+  if(localStorage.getItem('sunsynk_theme') === 'light') setLight(); else setDark();
+}
+function toggleTheme() {
+  if(document.documentElement.getAttribute('data-theme') === 'light') setDark(); else setLight();
+}
+function setLight() {
+  document.documentElement.setAttribute('data-theme', 'light');
+  document.getElementById('themeIcon').innerHTML = '&#127763;';
+  document.getElementById('themeLabel').textContent = 'Light';
+  localStorage.setItem('sunsynk_theme', 'light');
+}
+function setDark() {
+  document.documentElement.removeAttribute('data-theme');
+  document.getElementById('themeIcon').innerHTML = '&#127761;';
+  document.getElementById('themeLabel').textContent = 'Dark';
+  localStorage.setItem('sunsynk_theme', 'dark');
+}
+
+initTheme();
+initFontSize();
+fetch('/api/me').then(r=>r.json()).then(u => {
+  if(u.role === 'admin') {
+    document.getElementById('navSettings').style.display = 'flex';
+    document.getElementById('navAutomation').style.display = 'flex';
+  }
+});
+loadAll();
+
+function initFontSize() {
+  const sz = localStorage.getItem('sunsynk_font') || 'medium';
+  applyFontSize(sz);
+}
+function applyFontSize(sz) {
+  if(sz === 'small') document.documentElement.setAttribute('data-font','small');
+  else if(sz === 'large') document.documentElement.setAttribute('data-font','large');
+  else document.documentElement.removeAttribute('data-font');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inverter Dashboard - Settings</title>
+  <style>
+    :root { --bg:#0a0e14; --surface:#12171f; --surface2:#181e28; --border:#252b36; --text:#e2e8f0; --muted:#7c8798; --accent:#388bfd; --green:#2ea043; --red:#f85149; --orange:#db6d28; --sidebar-w:200px; --font-scale:14px; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; display:flex; min-height:100vh; font-size:var(--font-scale); }
+    a { color:var(--accent); text-decoration:none; }
+
+    .sidebar {
+      width:var(--sidebar-w); background:var(--surface); border-right:1px solid var(--border);
+      display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100;
+    }
+    .sidebar-brand { padding:16px 18px 12px; border-bottom:1px solid var(--border); }
+    .sidebar-brand h2 { font-size:15px; font-weight:700; color:var(--accent); }
+    .sidebar-brand .tagline { font-size:11px; color:var(--muted); margin-top:2px; }
+    .sidebar-nav { flex:1; overflow-y:auto; padding:8px 0; }
+    .sidebar-nav .nav-section { padding:10px 18px 4px; font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
+    .sidebar-nav a {
+      display:flex; align-items:center; gap:9px; padding:8px 18px; font-size:13px;
+      color:var(--muted); border-left:2px solid transparent; transition:all 0.15s; cursor:pointer;
+      text-decoration:none; outline:none;
+    }
+    .sidebar-nav a:hover { color:var(--text); background:var(--surface2); }
+    .sidebar-nav a:focus { color:var(--text); background:var(--surface2); }
+    .sidebar-nav a.active { color:var(--accent); border-left-color:var(--accent); background:var(--surface2); }
+    .sidebar-nav a .icon { width:18px; text-align:center; font-size:14px; }
+    .sidebar-footer { padding:10px 18px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); }
+
+    .main { margin-left:var(--sidebar-w); flex:1; padding:18px 22px; min-width:0; }
+    .section-header { margin-bottom:16px; }
+    .section-header h1 { font-size:20px; font-weight:700; }
+
+    .panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:16px; }
+    .panel h3 { font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+
+    .form-row { margin-bottom:10px; }
+    .form-row label { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; }
+    .form-row input, .form-row select { background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:6px 10px; border-radius:6px; font-size:13px; width:100%; max-width:400px; }
+    .form-row input:focus, .form-row select:focus { border-color:var(--accent); outline:none; }
+
+    .btn { background:var(--accent); color:#fff; border:none; padding:7px 16px; border-radius:6px; font-size:13px; cursor:pointer; font-weight:600; }
+    .btn:hover { opacity:0.9; }
+    .btn.danger { background:var(--red); }
+    .btn.small { font-size:11px; padding:4px 10px; }
+
+    .msg { padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:12px; display:none; }
+    .msg.show { display:block; }
+    .msg.ok { background:#0a2f1f; border:1px solid var(--green); color:var(--green); }
+    .msg.err { background:#3d0e0e; border:1px solid var(--red); color:var(--red); }
+
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:8px 10px; font-size:13px; border-bottom:1px solid var(--border); }
+    th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; }
+    td .role-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; }
+    td .role-badge.admin { background:#1a2f4a; color:var(--accent); }
+    td .role-badge.readonly { background:#1a2a1e; color:var(--green); }
+
+    @media (max-width:768px) {
+      .sidebar { width:52px; }
+      .sidebar-brand h2, .sidebar-brand .tagline, .sidebar-nav a span { display:none; }
+      .sidebar-nav a { justify-content:center; padding:10px; }
+      .sidebar-nav a .icon { font-size:18px; }
+      .main { margin-left:52px; padding:12px; }
+      :root { --sidebar-w:52px; }
+    }
+
+    /* Light theme */
+    [data-theme="light"] {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --surface2: #f7f8fa;
+      --border: #d1d5db;
+      --text: #1f2937;
+      --muted: #6b7280;
+    }
+    [data-theme="light"] .panel { border-color: #e5e7eb; }
+    [data-theme="light"] .msg.ok { background: #d1fae5; color: #065f46; }
+    [data-theme="light"] .msg.err { background: #fee2e2; color: #991b1b; }
+
+    [data-font="small"] { --font-scale: 12px; }
+    [data-font="large"] { --font-scale: 16px; }
+
+    .theme-toggle { padding: 8px 14px; }
+    .theme-toggle button {
+      background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; width: 100%;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 28px 32px; max-width: 400px; width: 90vw; text-align: center;
+    }
+    .phoenix-mini {
+      width: 80px; height: 80px; margin: 0 auto 12px; position: relative;
+    }
+    .phoenix-mini::before {
+      content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 60px; height: 60px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,107,43,0.3) 0%, rgba(255,50,0,0.1) 50%, transparent 70%);
+      animation: auraPulse 1.5s ease-in-out infinite;
+    }
+    .phoenix-mini::after {
+      content: '\1F426'; font-size: 40px; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%); animation: phoenixFloat 2s ease-in-out infinite;
+    }
+    @keyframes auraPulse {
+      0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 0.6; }
+      50% { transform: translate(-50%,-50%) scale(1.3); opacity: 1; }
+    }
+    @keyframes phoenixFloat {
+      0%,100% { transform: translate(-50%,-50%) translateY(0); }
+      50% { transform: translate(-50%,-50%) translateY(-6px); }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <h2>Inverter</h2>
+    <div class="tagline">Dashboard</div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/#overview" class="nav-link"><span class="icon">&#9679;</span><span>My Summary</span></a>
+    <a href="/#power" class="nav-link"><span class="icon">&#9889;</span><span>Power Flow</span></a>
+    <a href="/#battery" class="nav-link"><span class="icon">&#128267;</span><span>Battery</span></a>
+    <a href="/#solar" class="nav-link"><span class="icon">&#9728;</span><span>Solar / PV</span></a>
+    <a href="/#grid" class="nav-link"><span class="icon">&#127760;</span><span>Grid</span></a>
+    <a href="/#energy" class="nav-link"><span class="icon">&#128200;</span><span>Energy & Yield</span></a>
+    <a href="/#totals" class="nav-link"><span class="icon">&#128202;</span><span>Daily Totals</span></a>
+    <a href="/#system" class="nav-link"><span class="icon">&#9881;</span><span>System Health</span></a>
+    <a href="/#automation" id="navAutomation" class="nav-link" style="display:none"><span class="icon">&#9889;</span><span>Automation</span></a>
+    <a href="/settings" id="navSettings" class="nav-link active" style="display:none"><span class="icon">&#9881;</span><span>Settings</span></a>
+    <a href="/logout" class="nav-link"><span class="icon">&#128682;</span><span>Logout</span></a>
+  </nav>
+  <div class="theme-toggle">
+    <button id="themeBtn" onclick="toggleTheme()"><span id="themeIcon">&#127761;</span> <span id="themeLabel">Dark</span></button>
+  </div>
+  <div class="sidebar-footer" id="sidebarUser">--</div>
+</aside>
+
+<main class="main">
+  <div class="section-header"><h1>Settings</h1></div>
+
+  <div id="msg" class="msg"></div>
+
+  <div class="panel">
+    <h3>Inverter Connection</h3>
+    <div class="form-row">
+      <label for="inverterType">Inverter Type</label>
+      <select id="inverterType">
+        <option value="Sunsynk">SunSynk</option>
+        <option value="Deye">Deye</option>
+        <option value="Sol-Ark">Sol-Ark</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="port">RS485 Port (e.g. /dev/ttyUSB0)</label>
+      <input type="text" id="port" placeholder="/dev/ttyUSB0">
+    </div>
+    <div class="form-row">
+      <label for="baudrate">Baud Rate</label>
+      <select id="baudrate">
+        <option value="9600">9600</option>
+        <option value="19200">19200</option>
+        <option value="38400">38400</option>
+        <option value="57600">57600</option>
+        <option value="115200">115200</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="slaveId">Inverter Modbus ID</label>
+      <input type="number" id="slaveId" min="1" max="247" placeholder="1">
+    </div>
+    <div class="form-row">
+      <label for="pollInterval">Poll Interval (seconds)</label>
+      <input type="number" id="pollInterval" min="1" max="3600" placeholder="5">
+    </div>
+    <div class="form-row">
+      <label for="retention">Data Retention (days)</label>
+      <input type="number" id="retention" min="1" max="3650" placeholder="365">
+    </div>
+    <div class="form-row">
+      <label for="timezone">Timezone</label>
+      <select id="timezone">
+        <option value="Africa/Johannesburg">Africa/Johannesburg (SAST)</option>
+        <option value="UTC">UTC</option>
+        <option value="Europe/London">Europe/London</option>
+        <option value="Europe/Berlin">Europe/Berlin</option>
+        <option value="Europe/Paris">Europe/Paris</option>
+        <option value="America/New_York">America/New_York</option>
+        <option value="America/Chicago">America/Chicago</option>
+        <option value="America/Denver">America/Denver</option>
+        <option value="America/Los_Angeles">America/Los_Angeles</option>
+        <option value="Asia/Dubai">Asia/Dubai</option>
+        <option value="Asia/Kolkata">Asia/Kolkata</option>
+        <option value="Asia/Singapore">Asia/Singapore</option>
+        <option value="Australia/Sydney">Australia/Sydney</option>
+        <option value="Pacific/Auckland">Pacific/Auckland</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="fontSize">Font Size</label>
+      <select id="fontSize">
+        <option value="small">Small</option>
+        <option value="medium" selected>Medium</option>
+        <option value="large">Large</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px">
+      <button class="btn" onclick="saveConn()">Save Connection Settings</button>
+      <span style="font-size:12px;color:var(--muted)">Mode:</span>
+      <span id="modeLabel" style="font-size:13px;font-weight:600;padding:4px 12px;border-radius:6px">Simulate</span>
+      <button class="btn green" id="goLiveBtn" onclick="goLive()">Go Live</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Weather (OpenWeatherMap)</h3>
+    <div class="form-row">
+      <label for="weatherApiName">API Name</label>
+      <input type="text" id="weatherApiName" placeholder="e.g. OpenWeatherMap Free">
+    </div>
+    <div class="form-row">
+      <label for="weatherKey">API Key</label>
+      <input type="password" id="weatherKey" placeholder="your openweathermap api key">
+    </div>
+    <div class="form-row">
+      <label for="weatherCity">City</label>
+      <input type="text" id="weatherCity" placeholder="e.g. Johannesburg,ZA">
+    </div>
+    <button class="btn" onclick="saveWeather()">Save Weather Settings</button>
+  </div>
+
+  <div class="panel">
+    <h3>Change Password</h3>
+    <div class="form-row">
+      <label for="currentPw">Current Password</label>
+      <input type="password" id="currentPw">
+    </div>
+    <div class="form-row">
+      <label for="newPw">New Password</label>
+      <input type="password" id="newPw">
+    </div>
+    <button class="btn" onclick="changePassword()">Change Password</button>
+  </div>
+
+  <div class="panel">
+    <h3>Manage Users</h3>
+    <table>
+      <thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody id="usersTable"><tr><td colspan="4" style="color:var(--muted)">Loading...</td></tr></tbody>
+    </table>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <input type="text" id="newUsername" placeholder="Username" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:13px;width:140px;">
+      <input type="password" id="newPassword" placeholder="Password" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:13px;width:140px;">
+      <select id="newRole" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:13px;">
+        <option value="readonly">Read Only</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button class="btn" onclick="createUser()">Add User</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Update</h3>
+    <div class="form-row">
+      <label for="gitRepo">GitHub Repo</label>
+      <input type="text" id="gitRepo" placeholder="https://github.com/user/repo" style="width:300px">
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn" onclick="saveGit()">Save Repo URL</button>
+      <button class="btn" id="checkUpdateBtn" onclick="checkUpdate()">Check for Update</button>
+      <button class="btn green" id="doUpdateBtn" onclick="doUpdate()" style="display:none">Update Now</button>
+      <span id="updateStatus" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Data Management</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" onclick="generateTestData()">Generate Test Data</button>
+      <button class="btn danger" onclick="showClearModal()">Clear All Data</button>
+    </div>
+  </div>
+</main>
+
+<!-- Clear Data Modal -->
+<div class="modal-overlay" id="clearModal" style="display:none">
+  <div class="modal-box">
+    <div class="phoenix-mini"></div>
+    <h2>Clear All Data?</h2>
+    <p style="color:var(--muted);font-size:13px;margin:10px 0">This will delete ALL inverter readings, rules, and settings. The admin user will be preserved. This cannot be undone.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+      <button class="btn" onclick="hideClearModal()">Cancel</button>
+      <button class="btn danger" id="clearConfirmBtn" onclick="clearData()">Clear Everything</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function apiFetch(url, opts) {
+  const res = await fetch(url, opts);
+  if(res.status === 401) { window.location.href = '/login'; throw new Error('unauthorized'); }
+  return res;
+}
+
+function msg(text, cls) {
+  const el = document.getElementById('msg');
+  el.textContent = text; el.className = 'msg show ' + cls;
+  setTimeout(() => el.className = 'msg', 4000);
+}
+
+async function loadAll() {
+  const me = await apiFetch('/api/me').then(r=>r.json());
+  document.getElementById('sidebarUser').textContent = me.role === 'admin' ? 'Admin' : 'User';
+  if(me.role === 'admin') {
+    document.getElementById('navSettings').style.display = 'flex';
+    document.getElementById('navAutomation').style.display = 'flex';
+  }
+
+  const settings = await apiFetch('/api/settings').then(r=>r.json());
+  document.getElementById('port').value = settings.port || '/dev/ttyUSB0';
+  document.getElementById('baudrate').value = settings.baudrate || '9600';
+  document.getElementById('slaveId').value = settings.slave_id || '1';
+  document.getElementById('inverterType').value = settings.inverter_type || 'Sunsynk';
+  document.getElementById('pollInterval').value = settings.poll_interval || '5';
+  document.getElementById('retention').value = settings.retention_days || '365';
+  document.getElementById('timezone').value = settings.timezone || 'Africa/Johannesburg';
+  document.getElementById('fontSize').value = settings.font_size || 'medium';
+
+  // Mode display
+  const mode = settings.run_mode || 'simulate';
+  updateModeDisplay(mode);
+  document.getElementById('weatherKey').value = settings.weather_key || '';
+  document.getElementById('weatherCity').value = settings.weather_city || '';
+  document.getElementById('weatherApiName').value = settings.weather_api_name || '';
+  document.getElementById('gitRepo').value = settings.git_repo || '';
+
+  const users = await apiFetch('/api/users').then(r=>r.json());
+  document.getElementById('usersTable').innerHTML = users.map(u => `
+    <tr>
+      <td>${u.username}</td>
+      <td><span class="role-badge ${u.role}">${u.role}</span></td>
+      <td>${new Date(u.created_at*1000).toLocaleDateString()}</td>
+      <td>
+        ${u.username !== 'admin' ? `<button class="btn danger small" onclick="deleteUser('${u.username}')">Delete</button>` : '<span style="font-size:11px;color:var(--muted)">default</span>'}
+      </td>
+    </tr>`).join('');
+}
+
+async function saveConn() {
+  const body = {
+    inverter_type: document.getElementById('inverterType').value,
+    port: document.getElementById('port').value,
+    baudrate: document.getElementById('baudrate').value,
+    slave_id: document.getElementById('slaveId').value,
+    poll_interval: document.getElementById('pollInterval').value,
+    retention_days: document.getElementById('retention').value,
+    timezone: document.getElementById('timezone').value,
+    font_size: document.getElementById('fontSize').value,
+  };
+  const res = await apiFetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if(res.ok) {
+    const sz = document.getElementById('fontSize').value;
+    localStorage.setItem('sunsynk_font', sz);
+    applyFontSize(sz);
+    msg('Connection settings saved. Restart the service to apply.', 'ok');
+  }
+  else msg('Failed to save settings.', 'err');
+}
+
+async function saveWeather() {
+  const body = {
+    weather_api_name: document.getElementById('weatherApiName').value,
+    weather_key: document.getElementById('weatherKey').value,
+    weather_city: document.getElementById('weatherCity').value,
+  };
+  const res = await apiFetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if(res.ok) msg('Weather settings saved.', 'ok');
+  else msg('Failed to save.', 'err');
+}
+
+async function changePassword() {
+  const body = {
+    current_password: document.getElementById('currentPw').value,
+    new_password: document.getElementById('newPw').value,
+  };
+  const res = await apiFetch('/api/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  const data = await res.json();
+  if(res.ok) { msg('Password changed.', 'ok'); document.getElementById('currentPw').value = ''; document.getElementById('newPw').value = ''; }
+  else msg(data.error || 'Failed', 'err');
+}
+
+async function createUser() {
+  const body = {
+    username: document.getElementById('newUsername').value,
+    password: document.getElementById('newPassword').value,
+    role: document.getElementById('newRole').value,
+  };
+  const res = await apiFetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  const data = await res.json();
+  if(res.ok) { msg('User created.', 'ok'); loadAll(); }
+  else msg(data.error || 'Failed', 'err');
+}
+
+async function deleteUser(username) {
+  if(!confirm(`Delete user "${username}"?`)) return;
+  const res = await apiFetch('/api/users/' + username, { method:'DELETE' });
+  if(res.ok) { msg('User deleted.', 'ok'); loadAll(); }
+  else msg('Cannot delete that user.', 'err');
+}
+
+async function goLive() {
+  if(!confirm('This will auto-detect your RS485 adapter and switch to LIVE mode. The dashboard will restart. Continue?')) return;
+  const btn = document.getElementById('goLiveBtn');
+  btn.disabled = true; btn.textContent = 'Detecting...';
+  const res = await apiFetch('/api/go-live', {method:'POST'});
+  const data = await res.json();
+  if(res.ok) {
+    updateModeDisplay('live');
+    msg(`Live mode activated on ${data.port}. Dashboard restarting...`, 'ok');
+    setTimeout(() => { window.location.reload(); }, 3000);
+  } else {
+    msg(data.error || 'No RS485 adapter found. Check connection.', 'err');
+    btn.disabled = false; btn.textContent = 'Go Live';
+  }
+}
+
+function updateModeDisplay(mode) {
+  const label = document.getElementById('modeLabel');
+  const btn = document.getElementById('goLiveBtn');
+  if(mode === 'live') {
+    label.textContent = 'Live';
+    label.style.background = '#0a2f1f';
+    label.style.color = 'var(--green)';
+    btn.style.display = 'none';
+  } else {
+    label.textContent = 'Simulate';
+    label.style.background = '#2a1f0a';
+    label.style.color = 'var(--yellow)';
+    btn.style.display = 'inline-block';
+  }
+}
+
+function showClearModal() {
+  document.getElementById('clearModal').style.display = 'flex';
+  document.getElementById('clearConfirmBtn').disabled = false;
+  document.getElementById('clearConfirmBtn').textContent = 'Clear Everything';
+}
+function hideClearModal() {
+  document.getElementById('clearModal').style.display = 'none';
+}
+async function clearData() {
+  const btn = document.getElementById('clearConfirmBtn');
+  btn.disabled = true; btn.textContent = 'Clearing...';
+  const res = await apiFetch('/api/clear-data', {method:'POST'});
+  if(res.ok) {
+    msg('All data cleared.', 'ok');
+    hideClearModal();
+    loadAll();
+  } else {
+    msg('Failed to clear data.', 'err');
+    btn.disabled = false;
+    btn.textContent = 'Clear Everything';
+  }
+}
+async function generateTestData() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  const res = await apiFetch('/api/generate-test-data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({hours:50})});
+  if(res.ok) {
+    const d = await res.json();
+    msg(`Generated ${d.hours}h of test data.`, 'ok');
+  } else {
+    msg('Failed to generate test data.', 'err');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Generate Test Data';
+}
+
+async function saveGit() {
+  const body = { git_repo: document.getElementById('gitRepo').value };
+  await apiFetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  msg('Repo URL saved.', 'ok');
+}
+
+async function checkUpdate() {
+  const btn = document.getElementById('checkUpdateBtn');
+  const status = document.getElementById('updateStatus');
+  const doBtn = document.getElementById('doUpdateBtn');
+  btn.disabled = true; btn.textContent = 'Checking...';
+  status.textContent = '';
+  doBtn.style.display = 'none';
+  try {
+    const res = await apiFetch('/api/check-update');
+    const data = await res.json();
+    if(data.status === 'update_available') {
+      status.textContent = `Update available (${data.local} → ${data.remote})`;
+      status.style.color = 'var(--green)';
+      doBtn.style.display = 'inline-block';
+    } else if(data.status === 'up_to_date') {
+      status.textContent = 'Already up to date';
+      status.style.color = 'var(--muted)';
+    } else {
+      status.textContent = data.message || 'Cannot check (not a git repo?)';
+      status.style.color = 'var(--orange)';
+    }
+  } catch(e) {
+    status.textContent = 'Check failed';
+    status.style.color = 'var(--red)';
+  }
+  btn.disabled = false; btn.textContent = 'Check for Update';
+}
+
+async function doUpdate() {
+  if(!confirm('Pull latest code and restart? Unsaved changes will be stashed.')) return;
+  const btn = document.getElementById('doUpdateBtn');
+  btn.disabled = true; btn.textContent = 'Updating...';
+  const res = await apiFetch('/api/do-update', {method:'POST'});
+  const data = await res.json();
+  if(res.ok) {
+    msg(data.message || 'Updated. Restarting...', 'ok');
+    setTimeout(() => location.reload(), 3000);
+  } else {
+    msg(data.error || 'Update failed', 'err');
+    btn.disabled = false; btn.textContent = 'Update Now';
+  }
+}
+
+loadAll();
+initTheme();
+initFontSize();
+
+function initFontSize() {
+  const sz = localStorage.getItem('sunsynk_font') || 'medium';
+  applyFontSize(sz);
+}
+function applyFontSize(sz) {
+  if(sz === 'small') document.documentElement.setAttribute('data-font','small');
+  else if(sz === 'large') document.documentElement.setAttribute('data-font','large');
+  else document.documentElement.removeAttribute('data-font');
+}
+
+function initTheme() {
+  if(localStorage.getItem('sunsynk_theme') === 'light') setLight(); else setDark();
+}
+function toggleTheme() {
+  if(document.documentElement.getAttribute('data-theme') === 'light') setDark(); else setLight();
+}
+function setLight() {
+  document.documentElement.setAttribute('data-theme', 'light');
+  document.getElementById('themeIcon').innerHTML = '&#127763;';
+  document.getElementById('themeLabel').textContent = 'Light';
+  localStorage.setItem('sunsynk_theme', 'light');
+}
+function setDark() {
+  document.documentElement.removeAttribute('data-theme');
+  document.getElementById('themeIcon').innerHTML = '&#127761;';
+  document.getElementById('themeLabel').textContent = 'Dark';
+  localStorage.setItem('sunsynk_theme', 'dark');
+}
+</script>
+</body>
+</html>

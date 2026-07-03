@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inverter Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --surface: #12171f;
+      --surface2: #181e28;
+      --border: #252b36;
+      --text: #e2e8f0;
+      --muted: #7c8798;
+      --accent: #388bfd;
+      --green: #2ea043;
+      --yellow: #d2991d;
+      --orange: #db6d28;
+      --red: #f85149;
+      --purple: #8b5cf6;
+      --sidebar-w: 200px;
+      --font-scale: 14px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; display: flex; min-height: 100vh; font-size: var(--font-scale); }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    }
+    .sidebar-brand { padding: 16px 18px 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-brand h2 { font-size: 15px; font-weight: 700; color: var(--accent); }
+    .sidebar-brand .tagline { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .sidebar-nav .nav-section { padding: 10px 18px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+    .sidebar-nav a {
+      display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px;
+      color: var(--muted); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer;
+      text-decoration: none; outline: none;
+    }
+    .sidebar-nav a:hover { color: var(--text); background: var(--surface2); }
+    .sidebar-nav a:focus { color: var(--text); background: var(--surface2); }
+    .sidebar-nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--surface2); }
+    .sidebar-nav a .icon { width: 18px; text-align: center; font-size: 14px; }
+    .sidebar-footer { padding: 10px 18px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+
+    /* Main */
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 18px 22px; min-width: 0; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .section-header h1 { font-size: 20px; font-weight: 700; }
+    .controls { display: flex; gap: 8px; align-items: center; }
+    .controls select, .controls button { background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .last-update { font-size: 11px; color: var(--muted); }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .card h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: center; }
+    .stat-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+    .stat-card .value { font-size: 26px; font-weight: 700; }
+    .stat-card .unit { font-size: 11px; color: var(--muted); }
+    .stat-card .sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .stat-card.accent { border-color: var(--accent); }
+    .stat-card.green { border-color: var(--green); }
+    .stat-card.yellow { border-color: var(--yellow); }
+    .stat-card.orange { border-color: var(--orange); }
+
+    /* Grid layouts */
+    .charts-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .charts-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .chart-card h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .chart-card canvas { max-height: 260px; }
+
+    /* Executive yield table */
+    .yield-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .yield-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .yield-card h3 { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .yield-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .yield-row:last-child { border-bottom: none; }
+    .yield-row .key { color: var(--muted); }
+    .yield-row .val { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .yield-total { font-size: 14px; font-weight: 700; padding-top: 4px; margin-top: 4px; border-top: 1px solid var(--border); }
+
+    /* Energy flow */
+    .flow-wrap {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      display: grid; grid-template-columns: 1fr 100px 1fr; grid-template-rows: auto 120px auto;
+      gap: 0; align-items: center; justify-items: center; position: relative;
+      padding: 10px 0; margin-bottom: 14px; min-height: 340px; overflow: hidden;
+    }
+    .flow-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    .flow-line:nth-child(1) { animation: dash 1.5s linear infinite; stroke-dashoffset: 0; }
+    .flow-line:nth-child(2) { animation: dash 1.5s linear infinite 0.3s; stroke-dashoffset: 0; }
+    .flow-line:nth-child(3) { animation: dash 1.5s linear infinite 0.6s; stroke-dashoffset: 0; }
+    .flow-line:nth-child(4) { animation: dash 1.5s linear infinite 0.9s; stroke-dashoffset: 0; }
+    @keyframes dash { 0%{stroke-dashoffset:24} 100%{stroke-dashoffset:0} }
+
+    .flow-node { display: flex; flex-direction: column; align-items: center; gap: 3px; z-index: 2; text-align: center; }
+    .flow-solar { grid-column:1; grid-row:1; }
+    .flow-grid  { grid-column:3; grid-row:1; }
+    .flow-inv   { grid-column:2; grid-row:2; }
+    .flow-batt  { grid-column:1; grid-row:3; }
+    .flow-home  { grid-column:3; grid-row:3; }
+    .flow-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+    .flow-val { font-size: 18px; font-weight: 700; }
+    .flow-sub { font-size: 10px; color: var(--muted); }
+
+    .outage-banner {
+      grid-column: 1 / -1; grid-row: 1; z-index: 3; display: none;
+      background: #3d0e0e; border: 1px solid var(--red); border-radius: 6px;
+      padding: 4px 12px; font-size: 11px; color: #f87171; text-align: center;
+      align-self: start; justify-self: center; margin-top: 4px;
+    }
+
+    .weather-bar {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 16px; margin-bottom: 14px; display: flex; align-items: center;
+      gap: 16px; font-size: 13px; flex-wrap: wrap;
+    }
+    .weather-bar .w-icon { font-size: 28px; }
+    .weather-bar .w-temp { font-size: 20px; font-weight: 700; }
+    .weather-bar .w-desc { color: var(--muted); text-transform: capitalize; }
+    .weather-bar .w-detail { color: var(--muted); font-size: 11px; }
+    .weather-bar .w-divider { color: var(--border); }
+
+    .theme-toggle { padding: 8px 14px; }
+
+    @media (max-width: 600px) {
+      .flow-wrap { grid-template-columns: 1fr 70px 1fr; grid-template-rows: auto 90px auto; min-height: 280px; padding: 6px 0; }
+      .flow-val { font-size: 14px; }
+      .flow-node svg { width: 30px; height: 30px; }
+    }
+
+    /* Light theme */
+    [data-theme="light"] {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --surface2: #f7f8fa;
+      --border: #d1d5db;
+      --text: #1f2937;
+      --muted: #6b7280;
+    }
+    [data-theme="light"] .stat-card { border-color: #e5e7eb; }
+    [data-theme="light"] .chart-card { border-color: #e5e7eb; }
+    [data-theme="light"] .yield-card { border-color: #e5e7eb; }
+    [data-theme="light"] .energy-flow-card { border-color: #e5e7eb; }
+    [data-theme="light"] .weather-bar { border-color: #e5e7eb; }
+    [data-theme="light"] .flow-wrap { border-color: #e5e7eb; }
+    [data-theme="light"] .flow-wrap svg text { fill: #374151; }
+    [data-theme="light"] .flow-wrap .flow-label { color: #6b7280; }
+    [data-theme="light"] .error-msg { background: #fee2e2; color: #991b1b; }
+    [data-theme="light"] .flow-wrap svg rect[fill="#12171f"] { fill: #ffffff; stroke: #e5e7eb; }
+
+    [data-font="small"] { --font-scale: 12px; }
+    [data-font="large"] { --font-scale: 16px; }
+
+    /* Status indicator */
+    .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+    .status-dot.online { background: var(--green); }
+    .status-dot.offline { background: var(--red); }
+
+    .error-msg { background: #3d0e0e; border: 1px solid var(--red); border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; display: none; }
+
+    /* flatpickr overrides */
+    .flatpickr-calendar { background: var(--surface) !important; border-color: var(--border) !important; }
+    .flatpickr-day { color: var(--text) !important; }
+    .flatpickr-day.today { border-color: var(--accent) !important; }
+    .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: var(--accent) !important; border-color: var(--accent) !important; }
+    .flatpickr-day:hover { background: var(--surface2) !important; }
+    .flatpickr-months .flatpickr-month, .flatpickr-current-month .flatpickr-monthDropdown-months { color: var(--text) !important; }
+    .flatpickr-weekday { color: var(--muted) !important; }
+    .flatpickr-time input { color: var(--text) !important; background: var(--surface2) !important; border-color: var(--border) !important; }
+    .flatpickr-time .flatpickr-am-pm { color: var(--muted) !important; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 52px; }
+      .sidebar-brand h2, .sidebar-brand .tagline, .sidebar-nav a span, .sidebar-nav .nav-section { display: none; }
+      .sidebar-nav a { justify-content: center; padding: 10px; }
+      .sidebar-nav a .icon { font-size: 18px; }
+      .main { margin-left: 52px; padding: 12px; }
+      :root { --sidebar-w: 52px; }
+      .charts-2, .charts-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <h2>Inverter</h2>
+    <div class="tagline">Dashboard</div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-link active" data-section="overview"><span class="icon">&#9679;</span><span>My Summary</span></a>
+    <a class="nav-link" data-section="power"><span class="icon">&#9889;</span><span>Power Flow</span></a>
+    <a class="nav-link" data-section="battery"><span class="icon">&#128267;</span><span>Battery</span></a>
+    <a class="nav-link" data-section="solar"><span class="icon">&#9728;</span><span>Solar / PV</span></a>
+    <a class="nav-link" data-section="grid"><span class="icon">&#127760;</span><span>Grid</span></a>
+    <a class="nav-link" data-section="energy"><span class="icon">&#128200;</span><span>Energy & Yield</span></a>
+    <a class="nav-link" data-section="totals"><span class="icon">&#128202;</span><span>Daily Totals</span></a>
+    <a class="nav-link" data-section="system"><span class="icon">&#9881;</span><span>System Health</span></a>
+    <a class="nav-link" data-section="automation" id="navAutomation" style="display:none"><span class="icon">&#9889;</span><span>Automation</span></a>
+    <a href="/settings" id="navSettings" class="nav-link" style="display:none"><span class="icon">&#9881;</span><span>Settings</span></a>
+    <a href="/logout" class="nav-link"><span class="icon">&#128682;</span><span>Logout</span></a>
+  </nav>
+  <div class="theme-toggle">
+    <button id="themeBtn" onclick="toggleTheme()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;width:100%;text-align:center">
+      <span id="themeIcon">&#127761;</span> <span id="themeLabel">Dark</span>
+    </button>
+  </div>
+  <div class="sidebar-footer">
+    <span id="sidebarTime">--</span>
+  </div>
+</aside>
+
+<!-- Main content -->
+<main class="main">
+  <div class="error-msg" id="errorMsg"></div>
+  <div class="section-header">
+    <h1 id="sectionTitle">My Summary</h1>
+    <div class="controls">
+      <label for="dateFrom" style="font-size:12px;color:var(--muted);margin-right:2px">From</label>
+      <input type="text" id="dateFrom" placeholder="Select date" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:12px;width:165px;cursor:pointer" readonly>
+      <label for="dateTo" style="font-size:12px;color:var(--muted);margin-right:2px">to</label>
+      <input type="text" id="dateTo" placeholder="Select date" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:12px;width:165px;cursor:pointer" readonly>
+      <button onclick="onDateChange()">Refresh</button>
+      <label style="font-size:11px;color:var(--muted);cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px">
+        <input type="checkbox" id="yesterdayToggle" onchange="toggleYesterday()" style="cursor:pointer"> Yesterday overlay
+      </label>
+      <span class="last-update" id="lastUpdate">--</span>
+    </div>
+  </div>
+
+  <!-- All sections rendered as hidden divs -->
+
+  <div id="content"></div>
+</main>
+
+<script>
+const COLORS = ['#388bfd','#2ea043','#db6d28','#d2991d','#f85149','#8b5cf6','#2dd4bf','#a78bfa','#fbbf24','#34d399'];
+const TIMEZONE = "{{ timezone }}";
+
+apiFetch('/api/me').then(r=>r.json()).then(u => {
+  if(u.role === 'admin') {
+    document.getElementById('navSettings').style.display = 'flex';
+    document.getElementById('navAutomation').style.display = 'flex';
+  }
+});
+let historyData = [];
+let yesterdayData = [];
+let allCharts = {};
+let latestData = null;
+
+async function apiFetch(url) {
+  const res = await fetch(url);
+  if(res.status === 401) { window.location.href = '/login'; throw new Error('unauthorized'); }
+  return res;
+}
+
+function fmtHour(ts) { const d=new Date(ts*1000); return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',timeZone:TIMEZONE}); }
+function fmtDay(ts) { const d=new Date(ts*1000); return d.toLocaleDateString([],{month:'numeric',day:'numeric',timeZone:TIMEZONE}) + ' ' + d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',timeZone:TIMEZONE}); }
+function fmtDate(ts) { const d=new Date(ts*1000); return d.toLocaleDateString([],{month:'numeric',day:'numeric',timeZone:TIMEZONE}); }
+function fullTime(ts) { return new Date(ts*1000).toLocaleString([],{timeZone:TIMEZONE}); }
+function nowTime() { return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:TIMEZONE}); }
+
+function fmtLabel(ts, spanHours) {
+  if(spanHours <= 12) return fmtHour(ts);
+  if(spanHours <= 72) return fmtDay(ts);
+  return fmtDate(ts);
+}
+
+function showError(msg) {
+  const el=document.getElementById('errorMsg'); el.style.display='block'; el.textContent=msg;
+}
+function hideError() { document.getElementById('errorMsg').style.display='none'; }
+
+function v(d,k,scale) { let v=d[k]; if(v==null) return null; return scale ? Math.round(v*scale*100)/100 : v; }
+
+function makeDataset(label, values, idx) {
+  return { label, data:values, borderColor:COLORS[idx%COLORS.length], backgroundColor:COLORS[idx%COLORS.length]+'20', borderWidth:1.5, pointRadius:0, tension:0.3, fill:false };
+}
+
+function createLineChart(canvasId, title, datasets, labels, yLabel) {
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return null;
+  if(allCharts[canvasId]) allCharts[canvasId].destroy();
+  allCharts[canvasId] = new Chart(canvas, {
+    type:'line', data:{labels,datasets},
+    options:{
+      responsive:true, animation:false, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#7c8798',boxWidth:12,padding:10,font:{size:11},usePointStyle:true}},
+        tooltip:{mode:'index',intersect:false}
+      },
+      scales:{
+        x:{grid:{color:'#1e2430'},ticks:{color:'#7c8798',maxTicksLimit:10,font:{size:10}}},
+        y:{grid:{color:'#1e2430'},ticks:{color:'#7c8798',font:{size:10}},title:{display:!!yLabel,text:yLabel||'',color:'#7c8798'}}
+      },
+      interaction:{mode:'nearest',intersect:false}
+    }
+  });
+  return allCharts[canvasId];
+}
+
+function renderSection(section) {
+  const content = document.getElementById('content');
+  const fromTs = getFromTs();
+  const toTs = getToTs();
+  const spanHours = (toTs - fromTs) / 3600;
+  const labels = historyData.map(r => fmtLabel(r.timestamp, spanHours));
+
+  let html = '';
+
+  if(section === 'overview') {
+    const l = latestData || {};
+    const pvTotal = (l.pv1_power||0) + (l.pv2_power||0);
+    const gridVal = l.grid_power || 0;
+    const battVal = l.battery_power || 0;
+    const loadVal = l.load_power || 0;
+    const soc = l.battery_soc || 0;
+
+    html += `
+    <div class="flow-wrap">
+      <!-- Flow lines -->
+      <svg class="flow-lines" viewBox="0 0 600 340" preserveAspectRatio="xMidYMid meet">
+        <line class="flow-line" x1="150" y1="130" x2="272" y2="160" stroke="#fbbf24" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+        <line class="flow-line" x1="328" y1="160" x2="450" y2="130" stroke="#60a5fa" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+        <line class="flow-line" x1="272" y1="220" x2="150" y2="230" stroke="#34d399" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+        <line class="flow-line" x1="328" y1="220" x2="450" y2="230" stroke="#a0aec0" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+        <!-- Wattage labels on lines -->
+        <text x="205" y="142" fill="#fbbf24" font-size="10" font-weight="700" text-anchor="middle" opacity="0.8">${pvTotal}W</text>
+        <text x="395" y="142" fill="#60a5fa" font-size="10" font-weight="700" text-anchor="middle" opacity="0.8">${Math.abs(gridVal)}W</text>
+        <text x="205" y="235" fill="#34d399" font-size="10" font-weight="700" text-anchor="middle" opacity="0.8">${Math.abs(battVal)}W</text>
+        <text x="395" y="235" fill="#a0aec0" font-size="10" font-weight="700" text-anchor="middle" opacity="0.8">${loadVal}W</text>
+        <!-- Animated dots -->
+        <circle r="3" fill="#fbbf24" opacity="0"><animate attributeName="cx" values="150;272" dur="1.8s" repeatCount="indefinite"/><animate attributeName="cy" values="130;160" dur="1.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" repeatCount="indefinite"/></circle>
+        <circle r="3" fill="#60a5fa" opacity="0"><animate attributeName="cx" values="328;450" dur="1.8s" begin="0.3s" repeatCount="indefinite"/><animate attributeName="cy" values="160;130" dur="1.8s" begin="0.3s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.3s" repeatCount="indefinite"/></circle>
+        <circle r="3" fill="#34d399" opacity="0"><animate attributeName="cx" values="272;150" dur="1.8s" begin="0.6s" repeatCount="indefinite"/><animate attributeName="cy" values="220;230" dur="1.8s" begin="0.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.6s" repeatCount="indefinite"/></circle>
+        <circle r="3" fill="#a0aec0" opacity="0"><animate attributeName="cx" values="328;450" dur="1.8s" begin="0.9s" repeatCount="indefinite"/><animate attributeName="cy" values="220;230" dur="1.8s" begin="0.9s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.9s" repeatCount="indefinite"/></circle>
+      </svg>
+
+      <!-- Outage banner -->
+      <div class="outage-banner" id="outageBanner" style="display:${l.grid_connected?'none':'block'}">
+        <span>Grid outage - </span><span id="outageDur">--</span><span> &middot; Est. battery: </span><span id="estRuntime">--</span>
+      </div>
+
+      <div class="flow-node flow-solar">
+        <svg width="42" height="42" viewBox="0 0 42 42"><rect x="17" y="3" width="8" height="12" rx="2" fill="#fbbf24"/><rect x="17" y="27" width="8" height="12" rx="2" fill="#fbbf24"/><rect x="3" y="17" width="12" height="8" rx="2" fill="#fbbf24"/><rect x="27" y="17" width="12" height="8" rx="2" fill="#fbbf24"/><rect x="15" y="15" width="12" height="12" rx="3" fill="#fbbf24"/><circle cx="21" cy="21" r="4" fill="#fef3c7"/></svg>
+        <span class="flow-label">SOLAR</span>
+        <span class="flow-val" style="color:#fbbf24">${pvTotal} W</span>
+      </div>
+
+      <div class="flow-node flow-grid">
+        <svg width="42" height="42" viewBox="0 0 42 42"><path d="M21 4 L21 8 M13 8 L29 8 M11 12 L21 8 L31 12 M11 12 L11 34 L13 34 L13 12 M31 12 L31 34 L29 34 L29 12 M9 20 L33 20 M7 28 L35 28 M5 34 L37 34" fill="none" stroke="#60a5fa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="6" r="2" fill="#60a5fa"/></svg>
+        <span class="flow-label">GRID</span>
+        <span class="flow-val" style="color:${gridVal>=0?'#60a5fa':'#f87171'}">${Math.abs(gridVal)} W</span>
+        <span class="flow-sub" style="color:${gridVal>=0?'#60a5fa':'#f87171'}">${gridVal>=0?'IMPORTING':'EXPORTING'}</span>
+      </div>
+
+      <div class="flow-node flow-inv">
+        <svg width="56" height="56" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="25" fill="none" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,8" opacity="0.3"><animateTransform attributeName="transform" type="rotate" from="0 28 28" to="360 28 28" dur="10s" repeatCount="indefinite"/></circle>
+          <rect x="18" y="18" width="20" height="20" rx="4" fill="none" stroke="#a78bfa" stroke-width="2"/>
+          <circle cx="28" cy="25" r="3" fill="#a78bfa"><animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite"/></circle>
+          <rect x="23" y="31" width="10" height="2" rx="0.5" fill="#a78bfa"/>
+          <rect x="24" y="34" width="8" height="1.5" rx="0.5" fill="#a78bfa"/>
+        </svg>
+        <span class="flow-label" style="color:#a78bfa">INVERTER</span>
+        <span class="flow-sub">${l.grid_connected ? 'Active' : 'Standby'}</span>
+      </div>
+
+      <div class="flow-node flow-batt">
+        <svg width="42" height="42" viewBox="0 0 42 42"><rect x="5" y="14" width="28" height="22" rx="3" fill="none" stroke="#34d399" stroke-width="2"/><rect x="8" y="${16 + Math.round(18*(1-soc/100))}" width="8" height="${Math.round(18*soc/100)}" rx="1" fill="#34d399"/><rect x="14" y="10" width="10" height="4" rx="2" fill="none" stroke="#34d399" stroke-width="1.5"/></svg>
+        <span class="flow-label">BATTERY</span>
+        <span class="flow-val" style="color:#34d399">${soc}%</span>
+        <span class="flow-sub" style="color:${battVal<0?'#34d399':'#f87171'}">${Math.abs(battVal)}W ${battVal<0?'Charging':'Discharging'}</span>
+      </div>
+
+      <div class="flow-node flow-home">
+        <svg width="42" height="42" viewBox="0 0 42 42"><path d="M21 5 L5 18 L9 18 L9 37 L18 37 L18 27 L24 27 L24 37 L33 37 L33 18 L37 18 Z" fill="none" stroke="#a0aec0" stroke-width="2" stroke-linejoin="round"/><rect x="18" y="31" width="6" height="6" rx="1" fill="#64748b"/></svg>
+        <span class="flow-label">HOME</span>
+        <span class="flow-val" style="color:#e2e8f0">${loadVal} W</span>
+      </div>
+    </div>
+
+    <div class="weather-bar" id="weatherBar">
+      <span style="color:var(--muted)">Loading weather...</span>
+    </div>
+
+    <div class="yield-grid">
+      <div class="yield-card">
+        <h3>Today's Energy Yield</h3>
+        <div class="yield-row"><span class="key">Solar Production</span><span class="val" style="color:var(--yellow)">${l.day_pv_energy||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Consumption</span><span class="val">${l.day_load_energy||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Grid Import</span><span class="val" style="color:var(--orange)">${l.day_grid_import||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Grid Export</span><span class="val" style="color:var(--green)">${l.day_grid_export||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Battery Charge</span><span class="val">${l.day_battery_charge||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Battery Discharge</span><span class="val">${l.day_battery_discharge||0} kWh</span></div>
+        <div class="yield-total"><span class="key">Self-consumption</span><span class="val">${(((l.day_pv_energy||0)-(l.day_grid_export||0))/(l.day_load_energy||1)*100).toFixed(0) || 0}%</span></div>
+      </div>
+      <div class="yield-card">
+        <h3>Lifetime Totals</h3>
+        <div class="yield-row"><span class="key">Total PV</span><span class="val" style="color:var(--yellow)">${l.total_pv_energy||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Total Load</span><span class="val">${l.total_load_energy||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Total Grid Import</span><span class="val" style="color:var(--orange)">${l.total_grid_import||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Total Grid Export</span><span class="val" style="color:var(--green)">${l.total_grid_export||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Total Batt Charge</span><span class="val">${l.total_battery_charge||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Total Batt Discharge</span><span class="val">${l.total_battery_discharge||0} kWh</span></div>
+        <div class="yield-row"><span class="key">Rated Power</span><span class="val">${l.rated_power||0} W</span></div>
+      </div>
+    </div>
+
+    <div class="charts-2">
+      <div class="chart-card"><h3>Power Flow (W)</h3><canvas id="chart-power-overview"></canvas></div>
+      <div class="chart-card"><h3>Battery SOC (%)</h3><canvas id="chart-soc-overview"></canvas></div>
+    </div>`;
+
+  } else if(section === 'power') {
+    html += `
+    <div class="charts-2">
+      <div class="chart-card"><h3>Power Flow (W)</h3><canvas id="chart-power-main"></canvas></div>
+      <div class="chart-card"><h3>Load Profile (W)</h3><canvas id="chart-load-profile"></canvas></div>
+    </div>
+    <div class="charts-2">
+      <div class="chart-card"><h3>Inverter Output (W)</h3><canvas id="chart-inverter-out"></canvas></div>
+      <div class="chart-card"><h3>Essential vs Non-Essential (W)</h3><canvas id="chart-essential"></canvas></div>
+    </div>`;
+
+  } else if(section === 'battery') {
+    html += `
+    <div class="charts-2">
+      <div class="chart-card"><h3>Battery SOC & Power</h3><canvas id="chart-batt-soc-power"></canvas></div>
+      <div class="chart-card"><h3>Battery Voltage & Current</h3><canvas id="chart-batt-vi"></canvas></div>
+    </div>
+    <div class="charts-2">
+      <div class="chart-card"><h3>Battery Charge/Discharge Current Limits</h3><canvas id="chart-batt-limits"></canvas></div>
+      <div class="chart-card"><h3>Battery Temperature (°C)</h3><canvas id="chart-batt-temp"></canvas></div>
+    </div>`;
+
+  } else if(section === 'solar') {
+    html += `
+    <div class="charts-2">
+      <div class="chart-card"><h3>PV Power (W)</h3><canvas id="chart-pv-power"></canvas></div>
+      <div class="chart-card"><h3>PV Voltage (V)</h3><canvas id="chart-pv-voltage"></canvas></div>
+    </div>
+    <div class="charts-2">
+      <div class="chart-card"><h3>PV Current (A)</h3><canvas id="chart-pv-current"></canvas></div>
+      <div class="chart-card"><h3>Total PV vs Total Load (W)</h3><canvas id="chart-pv-vs-load"></canvas></div>
+    </div>`;
+
+  } else if(section === 'grid') {
+    html += `
+    <div class="charts-2">
+      <div class="chart-card"><h3>Grid Power (W) - Positive=Import, Negative=Export</h3><canvas id="chart-grid-power"></canvas></div>
+      <div class="chart-card"><h3>Grid Voltage & Frequency</h3><canvas id="chart-grid-vf"></canvas></div>
+    </div>
+    <div class="charts-2">
+      <div class="chart-card"><h3>Grid Current (A)</h3><canvas id="chart-grid-current"></canvas></div>
+      <div class="chart-card"><h3>Grid CT vs Measured Power (W)</h3><canvas id="chart-grid-ct"></canvas></div>
+    </div>`;
+
+  } else if(section === 'energy') {
+    html += `
+    <div class="charts-3">
+      <div class="chart-card"><h3>Daily PV Energy (kWh)</h3><canvas id="chart-energy-pv"></canvas></div>
+      <div class="chart-card"><h3>Daily Load Energy (kWh)</h3><canvas id="chart-energy-load"></canvas></div>
+      <div class="chart-card"><h3>Daily Grid Energy (kWh)</h3><canvas id="chart-energy-grid"></canvas></div>
+    </div>
+    <div class="charts-3">
+      <div class="chart-card"><h3>Daily Battery Charge (kWh)</h3><canvas id="chart-energy-batt-chg"></canvas></div>
+      <div class="chart-card"><h3>Daily Battery Discharge (kWh)</h3><canvas id="chart-energy-batt-dchg"></canvas></div>
+      <div class="chart-card"><h3>Cumulative Total Energy (kWh)</h3><canvas id="chart-energy-total"></canvas></div>
+    </div>`;
+
+  } else if(section === 'totals') {
+    html += `
+    <div class="panel" style="overflow-x:auto">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <span style="font-size:12px;color:var(--muted)">Period:</span>
+        <select id="totalsDays" onchange="loadTotalsData()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:13px">
+          <option value="30" selected>30 days</option>
+          <option value="90">90 days</option>
+          <option value="180">180 days</option>
+        </select>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)">Date</th>
+            <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border)">Load</th>
+            <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border);color:#fbbf24">Solar PV</th>
+            <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--accent)">Batt Chg</th>
+            <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border)">Batt Dis</th>
+            <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border);color:#db6d28">Grid Imp</th>
+            <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--green)">Grid Exp</th>
+          </tr>
+        </thead>
+        <tbody id="totalsBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Loading...</td></tr></tbody>
+        <tfoot id="totalsFoot"></tfoot>
+      </table>
+    </div>`;
+
+  } else if(section === 'automation') {
+    html += `
+    <div class="panel" style="overflow-x:auto">
+      <h3 style="margin-bottom:12px">Automation Rules</h3>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">IF THIS condition is met THEN fire a webhook (e.g. IFTTT → Google Home). Manage full settings on the <a href="/automation">Automation page</a>.</p>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)">Status</th>
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)">Name</th>
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)">Trigger</th>
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)">Cooldown</th>
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)">Last Fired</th>
+          </tr>
+        </thead>
+        <tbody id="automationBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Loading...</td></tr></tbody>
+      </table>
+    </div>`;
+
+  } else if(section === 'system') {
+    html += `
+    <div class="charts-2">
+      <div class="chart-card"><h3>System Temperatures (°C)</h3><canvas id="chart-system-temps"></canvas></div>
+      <div class="chart-card"><h3>Grid Connection Status</h3><canvas id="chart-system-grid-conn"></canvas></div>
+    </div>
+    <div class="charts-2">
+      <div class="chart-card"><h3>Overall State</h3><canvas id="chart-system-state"></canvas></div>
+      <div class="chart-card"><h3>Battery Charge/Discharge Limits (A)</h3><canvas id="chart-system-limits"></canvas></div>
+    </div>`;
+  }
+
+  content.innerHTML = html;
+  drawCharts(section, labels);
+}
+
+function drawCharts(section, labels) {
+  if(!historyData.length) return;
+  const h = historyData;
+
+  if(section === 'overview') {
+    const y = yesterdayData;
+    createLineChart('chart-power-overview', '', [
+      makeDataset('Grid', h.map(r=>v(r,'grid_power')),0),
+      makeDataset('Load', h.map(r=>v(r,'load_power')),1),
+      makeDataset('PV Total', h.map(r=>(r.pv1_power||0)+(r.pv2_power||0)),2),
+      makeDataset('Battery', h.map(r=>v(r,'battery_power')),3),
+      y.length ? {...makeDataset('Grid yd', y.map(r=>v(r,'grid_power')),0), borderDash:[4,3], borderWidth:1} : null,
+      y.length ? {...makeDataset('Load yd', y.map(r=>v(r,'load_power')),1), borderDash:[4,3], borderWidth:1} : null,
+      y.length ? {...makeDataset('PV yd', y.map(r=>(r.pv1_power||0)+(r.pv2_power||0)),2), borderDash:[4,3], borderWidth:1} : null,
+      y.length ? {...makeDataset('Batt yd', y.map(r=>v(r,'battery_power')),3), borderDash:[4,3], borderWidth:1} : null,
+    ].filter(Boolean), labels);
+    createLineChart('chart-soc-overview', '', [
+      makeDataset('SOC %', h.map(r=>v(r,'battery_soc')),0),
+      y.length ? {...makeDataset('SOC yd', y.map(r=>v(r,'battery_soc')),0), borderDash:[4,3], borderWidth:1} : null,
+    ].filter(Boolean), labels);
+  }
+
+  if(section === 'power') {
+    createLineChart('chart-power-main', '', [
+      makeDataset('Grid', h.map(r=>v(r,'grid_power')),0),
+      makeDataset('Load', h.map(r=>v(r,'load_power')),1),
+      makeDataset('PV1', h.map(r=>v(r,'pv1_power')),2),
+      makeDataset('PV2', h.map(r=>v(r,'pv2_power')),3),
+      makeDataset('Battery', h.map(r=>v(r,'battery_power')),4),
+    ], labels);
+    createLineChart('chart-load-profile', '', [
+      makeDataset('Load Power', h.map(r=>v(r,'load_power')),0),
+      makeDataset('Inverter Power', h.map(r=>v(r,'inverter_power')),1),
+    ], labels);
+    createLineChart('chart-inverter-out', '', [
+      makeDataset('Inverter', h.map(r=>v(r,'inverter_power')),0),
+      makeDataset('Gen/AUX', h.map(r=>v(r,'gen_power')),1),
+    ], labels);
+    createLineChart('chart-essential', '', [
+      makeDataset('Essential', h.map(r=>v(r,'load_power')),0),
+      makeDataset('Non-essential', h.map(r=>v(r,'grid_ct_power')),1),
+    ], labels);
+  }
+
+  if(section === 'battery') {
+    createLineChart('chart-batt-soc-power', '', [
+      makeDataset('SOC %', h.map(r=>v(r,'battery_soc')),0),
+    ], labels);
+    createLineChart('chart-batt-vi', '', [
+      makeDataset('Voltage (V)', h.map(r=>v(r,'battery_voltage')),0),
+      makeDataset('Current (A)', h.map(r=>v(r,'battery_current')),1),
+    ], labels);
+    createLineChart('chart-batt-limits', '', [
+      makeDataset('Charge Limit (A)', h.map(r=>v(r,'battery_charge_limit_current')),0),
+      makeDataset('Discharge Limit (A)', h.map(r=>v(r,'battery_discharge_limit_current')),1),
+    ], labels);
+    createLineChart('chart-batt-temp', '', [
+      makeDataset('Battery Temp (°C)', h.map(r=>v(r,'battery_temp')),0),
+    ], labels);
+  }
+
+  if(section === 'solar') {
+    createLineChart('chart-pv-power', '', [
+      makeDataset('PV1 Power', h.map(r=>v(r,'pv1_power')),0),
+      makeDataset('PV2 Power', h.map(r=>v(r,'pv2_power')),1),
+      makeDataset('Total PV', h.map(r=>(r.pv1_power||0)+(r.pv2_power||0)),2),
+    ], labels);
+    createLineChart('chart-pv-voltage', '', [
+      makeDataset('PV1 Voltage', h.map(r=>v(r,'pv1_voltage')),0),
+      makeDataset('PV2 Voltage', h.map(r=>v(r,'pv2_voltage')),1),
+    ], labels);
+    createLineChart('chart-pv-current', '', [
+      makeDataset('PV1 Current', h.map(r=>v(r,'pv1_current')),0),
+      makeDataset('PV2 Current', h.map(r=>v(r,'pv2_current')),1),
+    ], labels);
+    createLineChart('chart-pv-vs-load', '', [
+      makeDataset('Total PV', h.map(r=>(r.pv1_power||0)+(r.pv2_power||0)),0),
+      makeDataset('Load', h.map(r=>v(r,'load_power')),1),
+    ], labels);
+  }
+
+  if(section === 'grid') {
+    createLineChart('chart-grid-power', '', [
+      makeDataset('Grid Power', h.map(r=>v(r,'grid_power')),0),
+      makeDataset('Grid CT', h.map(r=>v(r,'grid_ct_power')),1),
+    ], labels);
+    createLineChart('chart-grid-vf', '', [
+      makeDataset('Voltage (V)', h.map(r=>v(r,'grid_voltage')),0),
+      makeDataset('Frequency (Hz)', h.map(r=>v(r,'grid_frequency')),1),
+    ], labels);
+    createLineChart('chart-grid-current', '', [
+      makeDataset('Grid Current (A)', h.map(r=>v(r,'grid_current')),0),
+    ], labels);
+    createLineChart('chart-grid-ct', '', [
+      makeDataset('Measured', h.map(r=>v(r,'grid_power')),0),
+      makeDataset('CT', h.map(r=>v(r,'grid_ct_power')),1),
+    ], labels);
+  }
+
+  if(section === 'energy') {
+    createLineChart('chart-energy-pv', '', [
+      makeDataset('Day PV', h.map(r=>v(r,'day_pv_energy')),0),
+    ], labels);
+    createLineChart('chart-energy-load', '', [
+      makeDataset('Day Load', h.map(r=>v(r,'day_load_energy')),0),
+    ], labels);
+    createLineChart('chart-energy-grid', '', [
+      makeDataset('Import', h.map(r=>v(r,'day_grid_import')),0),
+      makeDataset('Export', h.map(r=>v(r,'day_grid_export')),1),
+    ], labels);
+    createLineChart('chart-energy-batt-chg', '', [
+      makeDataset('Batt Charge', h.map(r=>v(r,'day_battery_charge')),0),
+    ], labels);
+    createLineChart('chart-energy-batt-dchg', '', [
+      makeDataset('Batt Discharge', h.map(r=>v(r,'day_battery_discharge')),0),
+    ], labels);
+    createLineChart('chart-energy-total', '', [
+      makeDataset('Total PV', h.map(r=>v(r,'total_pv_energy')),0),
+      makeDataset('Total Load', h.map(r=>v(r,'total_load_energy')),1),
+      makeDataset('Total Grid Import', h.map(r=>v(r,'total_grid_import')),2),
+      makeDataset('Total Grid Export', h.map(r=>v(r,'total_grid_export')),3),
+      makeDataset('Total Batt Chg', h.map(r=>v(r,'total_battery_charge')),4),
+      makeDataset('Total Batt Dchg', h.map(r=>v(r,'total_battery_discharge')),5),
+    ], labels);
+  }
+
+  if(section === 'totals') {
+    loadTotalsData();
+  }
+
+  if(section === 'automation') {
+    loadAutomationData();
+  }
+
+  if(section === 'system') {
+    createLineChart('chart-system-temps', '', [
+      makeDataset('DC Transformer', h.map(r=>v(r,'dc_transformer_temp')),0),
+      makeDataset('Radiator', h.map(r=>v(r,'radiator_temp')),1),
+      makeDataset('Environment', h.map(r=>v(r,'environment_temp')),2),
+      makeDataset('Battery', h.map(r=>v(r,'battery_temp')),3),
+    ], labels);
+    createLineChart('chart-system-grid-conn', '', [
+      makeDataset('Grid Connected', h.map(r=>v(r,'grid_connected')),0),
+    ], labels);
+    createLineChart('chart-system-state', '', [
+      makeDataset('Overall State', h.map(r=>v(r,'overall_state')),0),
+    ], labels);
+    createLineChart('chart-system-limits', '', [
+      makeDataset('Charge Limit', h.map(r=>v(r,'battery_charge_limit_current')),0),
+      makeDataset('Discharge Limit', h.map(r=>v(r,'battery_discharge_limit_current')),1),
+    ], labels);
+  }
+}
+
+function destroyAllCharts() {
+  Object.keys(allCharts).forEach(k => { if(allCharts[k]) allCharts[k].destroy(); });
+  allCharts = {};
+}
+
+// Navigation
+let currentSection = 'overview';
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', function() {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+    currentSection = this.dataset.section;
+    document.getElementById('sectionTitle').textContent = this.querySelector('span:last-child').textContent;
+    destroyAllCharts();
+    renderSection(currentSection);
+  });
+});
+
+function initDatePickers() {
+  if(typeof flatpickr === 'undefined') return;
+  const now = new Date();
+  const yday = new Date(now.getTime() - 86400 * 1000);
+  const opts = {
+    enableTime: true,
+    dateFormat: "Y-m-d H:i",
+    time_24hr: true,
+    allowInput: false,
+    clickOpens: true,
+  };
+  try {
+    flatpickr("#dateFrom", { ...opts, defaultDate: yday, onChange: onDateChange });
+    flatpickr("#dateTo", { ...opts, defaultDate: now, onChange: onDateChange });
+  } catch(e) {
+    // Fallback: set values manually
+    const pad = n => String(n).padStart(2,'0');
+    const fmt = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+    document.getElementById('dateFrom').value = fmt(yday);
+    document.getElementById('dateTo').value = fmt(now);
+  }
+}
+
+function getFromTs() {
+  const v = document.getElementById('dateFrom').value;
+  return v ? (new Date(v).getTime() / 1000) : (Date.now()/1000 - 86400);
+}
+function getToTs() {
+  const v = document.getElementById('dateTo').value;
+  return v ? (new Date(v).getTime() / 1000) : (Date.now()/1000);
+}
+
+function onDateChange() {
+  destroyAllCharts();
+  refreshAll();
+}
+
+async function refreshAll() {
+  const fromTs = getFromTs();
+  const toTs = getToTs();
+  hideError();
+  try {
+    const fetches = [
+      apiFetch(`/api/history?from=${fromTs}&to=${toTs}`),
+      apiFetch('/api/latest'),
+      apiFetch('/api/grid-status'),
+    ];
+    if(document.getElementById('yesterdayToggle').checked) {
+      fetches.push(apiFetch(`/api/yesterday?from=${fromTs}&to=${toTs}`));
+    }
+    const results = await Promise.all(fetches);
+    const [histRes, latestRes, gridRes] = results;
+
+    if(!histRes.ok) { showError('No historical data yet.'); return; }
+    historyData = await histRes.json();
+    if(!historyData.length) { showError('No data collected. Start the reader.'); return; }
+
+    if(latestRes.ok) latestData = await latestRes.json();
+    if(gridRes.ok) {
+      const gs = await gridRes.json();
+      updateOutageTimer(gs);
+    }
+
+    yesterdayData = [];
+    if(document.getElementById('yesterdayToggle').checked && results.length > 3) {
+      const ydRes = results[3];
+      if(ydRes.ok) yesterdayData = await ydRes.json();
+    }
+
+    document.getElementById('lastUpdate').textContent = 'Last: ' + fullTime(historyData[historyData.length-1].timestamp);
+    document.getElementById('sidebarTime').textContent = 'Updated ' + nowTime();
+    destroyAllCharts();
+    renderSection(currentSection);
+    loadWeather();
+  } catch(e) {
+    showError('Failed: ' + e.message);
+  }
+}
+
+function toggleYesterday() {
+  destroyAllCharts();
+  refreshAll();
+}
+
+async function loadTotalsData() {
+  const days = document.getElementById('totalsDays')?.value || '30';
+  try {
+    const res = await apiFetch('/api/totals?days=' + days);
+    if(!res || !res.ok) return;
+    const data = await res.json();
+    let html = '', tLoad=0, tSolar=0, tChg=0, tDis=0, tImp=0, tExp=0;
+    data.forEach(row => {
+      const d = new Date(row.date + 'T00:00:00');
+      const ds = d.toLocaleDateString([], {day:'2-digit', month:'short', year:'numeric'});
+      html += `<tr>
+        <td style="text-align:left;padding:6px 12px;border-bottom:1px solid var(--border)">${ds}</td>
+        <td style="text-align:right;padding:6px 12px;border-bottom:1px solid var(--border)">${row.load.toFixed(1)} kWh</td>
+        <td style="text-align:right;padding:6px 12px;border-bottom:1px solid var(--border);color:#fbbf24">${row.solar.toFixed(1)} kWh</td>
+        <td style="text-align:right;padding:6px 12px;border-bottom:1px solid var(--border);color:var(--accent)">${row.batt_charge.toFixed(1)} kWh</td>
+        <td style="text-align:right;padding:6px 12px;border-bottom:1px solid var(--border)">${row.batt_discharge.toFixed(1)} kWh</td>
+        <td style="text-align:right;padding:6px 12px;border-bottom:1px solid var(--border);color:#db6d28">${row.grid_import.toFixed(1)} kWh</td>
+        <td style="text-align:right;padding:6px 12px;border-bottom:1px solid var(--border);color:var(--green)">${row.grid_export.toFixed(1)} kWh</td>
+      </tr>`;
+      tLoad+=row.load; tSolar+=row.solar; tChg+=row.batt_charge; tDis+=row.batt_discharge; tImp+=row.grid_import; tExp+=row.grid_export;
+    });
+    const foot = `<tr style="font-weight:700;border-top:2px solid var(--accent)">
+      <td style="padding:6px 12px">TOTAL (${data.length}d)</td>
+      <td style="text-align:right;padding:6px 12px">${tLoad.toFixed(1)} kWh</td>
+      <td style="text-align:right;padding:6px 12px;color:#fbbf24">${tSolar.toFixed(1)} kWh</td>
+      <td style="text-align:right;padding:6px 12px;color:var(--accent)">${tChg.toFixed(1)} kWh</td>
+      <td style="text-align:right;padding:6px 12px">${tDis.toFixed(1)} kWh</td>
+      <td style="text-align:right;padding:6px 12px;color:#db6d28">${tImp.toFixed(1)} kWh</td>
+      <td style="text-align:right;padding:6px 12px;color:var(--green)">${tExp.toFixed(1)} kWh</td>
+    </tr>`;
+    const body = document.getElementById('totalsBody');
+    const footEl = document.getElementById('totalsFoot');
+    if(body) body.innerHTML = html;
+    if(footEl) footEl.innerHTML = foot;
+  } catch(e) {}
+}
+
+async function loadAutomationData() {
+  try {
+    const res = await apiFetch('/api/rules');
+    if(!res || !res.ok) return;
+    const rules = await res.json();
+    const ops = {lt:'&lt;', gt:'&gt;', eq:'='};
+    const body = document.getElementById('automationBody');
+    if(!body) return;
+    if(!rules.length) { body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">No rules yet. <a href="/automation">Create one</a>.</td></tr>'; return; }
+    body.innerHTML = rules.map(r => {
+      let t = r.trigger_field.replace(/_/g,' ');
+      if(r.trigger_field === 'grid_connected') t += ' = ' + (r.trigger_value?'Off':'On');
+      else t += ' ' + (ops[r.trigger_op]||r.trigger_op) + ' ' + r.trigger_value;
+      const last = r.last_fired ? new Date(r.last_fired*1000).toLocaleString() : 'Never';
+      return `<tr>
+        <td style="padding:6px 12px;border-bottom:1px solid var(--border)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${r.enabled?'var(--green)':'var(--red)'}"></span></td>
+        <td style="padding:6px 12px;border-bottom:1px solid var(--border)">${r.name}</td>
+        <td style="padding:6px 12px;border-bottom:1px solid var(--border)">${t}</td>
+        <td style="padding:6px 12px;border-bottom:1px solid var(--border)">${r.cooldown_seconds}s</td>
+        <td style="padding:6px 12px;border-bottom:1px solid var(--border);font-size:11px">${last}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function loadWeather(force) {
+  const bar = document.getElementById('weatherBar');
+  if(!bar) return;
+
+  const now = Date.now();
+  const CACHE_KEY = 'sunsynk_weather';
+  const CACHE_AGE = 10 * 60 * 1000; // 10 minutes
+
+  if(!force) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+      if(cached && cached.data && (now - cached.ts < CACHE_AGE)) {
+        renderWeather(cached.data);
+        return;
+      }
+    } catch(e) {}
+  }
+
+  try {
+    const res = await apiFetch('/api/weather');
+    if(!res.ok) { bar.innerHTML = cachedFallback(); return; }
+    const w = await res.json();
+    if(w.error) { bar.innerHTML = cachedFallback(); return; }
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ts:now, data:w}));
+    renderWeather(w);
+  } catch(e) {
+    bar.innerHTML = cachedFallback();
+  }
+}
+
+function cachedFallback() {
+  try {
+    const cached = JSON.parse(localStorage.getItem('sunsynk_weather'));
+    if(cached && cached.data) { renderWeather(cached.data); return cached.data.city||''; }
+  } catch(e) {}
+  return '';
+}
+
+function renderWeather(w) {
+  const bar = document.getElementById('weatherBar');
+  if(!bar || !w) return;
+  const iconUrl = 'https://openweathermap.org/img/wn/' + w.icon + '@2x.png';
+  const sunrise = new Date(w.sunrise * 1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',timeZone:TIMEZONE});
+  const sunset = new Date(w.sunset * 1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',timeZone:TIMEZONE});
+  bar.innerHTML = '<img src="' + iconUrl + '" width="40" height="40" alt="" style="image-rendering:crisp-edges">' +
+    '<span class="w-temp">' + w.temp + '&deg;C</span>' +
+    '<span class="w-desc">' + w.description + '</span>' +
+    '<span class="w-divider">|</span>' +
+    '<span class="w-detail">Feels ' + w.feels_like + '&deg;C</span>' +
+    '<span class="w-divider">|</span>' +
+    '<span class="w-detail">Humidity ' + w.humidity + '%</span>' +
+    '<span class="w-divider">|</span>' +
+    '<span class="w-detail">Wind ' + w.wind_speed + ' m/s</span>' +
+    '<span class="w-divider">|</span>' +
+    '<span class="w-detail">Clouds ' + w.clouds + '%</span>' +
+    '<span class="w-divider">|</span>' +
+    '<span class="w-detail">&#127748; ' + sunrise + '</span>' +
+    '<span class="w-divider">|</span>' +
+    '<span class="w-detail">&#127747; ' + sunset + '</span>' +
+    '<span class="w-divider">|</span>' +
+    '<span class="w-detail">' + w.city + ', ' + w.country + '</span>';
+}
+
+let outageTick = null;
+function updateOutageTimer(gs) {
+  const banner = document.getElementById('outageBanner');
+  if(!banner) return;
+  if(gs.connected) {
+    banner.style.display = 'none';
+    if(outageTick) { clearInterval(outageTick); outageTick = null; }
+    return;
+  }
+  banner.style.display = 'block';
+  const dur = gs.outage_seconds || 0;
+  function update() {
+    const total = dur + Math.floor((Date.now()/1000) - (Date.now()/1000 - dur)); // will update on tick
+    // Actually just use the original outage_seconds + elapsed
+    const secs = gs.outage_seconds + (outageTick ? Math.floor((Date.now()/1000) - (Date.now()/1000)) : 0);
+    const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
+    document.getElementById('outageDur').textContent = `${h}h ${m}m ${s}s`;
+    const soc = (latestData?.battery_soc || 0);
+    const load = (latestData?.load_power || 100);
+    const estH = load > 0 ? (soc / 100 * 4800 / load) : 0; // ~4.8kWh battery
+    document.getElementById('estRuntime').textContent = `${estH.toFixed(1)}h`;
+  }
+  update();
+  if(outageTick) clearInterval(outageTick);
+  outageTick = setInterval(() => {
+    gs.outage_seconds++;
+    update();
+  }, 1000);
+}
+
+initDatePickers();
+initTheme();
+initFontSize();
+
+// Handle hash-based navigation from other pages
+const hash = window.location.hash.replace('#', '');
+const validSections = ['overview','power','battery','solar','grid','energy','totals','automation','system'];
+if(hash && validSections.includes(hash)) {
+  currentSection = hash;
+  document.getElementById('sectionTitle').textContent = 
+    document.querySelector(`[data-section="${hash}"]`)?.querySelector('span:last-child')?.textContent || 'My Summary';
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  const nav = document.querySelector(`[data-section="${hash}"]`);
+  if(nav) nav.classList.add('active');
+}
+
+refreshAll();
+loadWeather();
+setInterval(refreshAll, 30000);
+
+function initFontSize() {
+  const sz = localStorage.getItem('sunsynk_font') || 'medium';
+  applyFontSize(sz);
+}
+function applyFontSize(sz) {
+  if(sz === 'small') document.documentElement.setAttribute('data-font','small');
+  else if(sz === 'large') document.documentElement.setAttribute('data-font','large');
+  else document.documentElement.removeAttribute('data-font');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('sunsynk_theme');
+  if(saved === 'light') setLight(); else setDark();
+}
+function toggleTheme() {
+  if(document.documentElement.getAttribute('data-theme') === 'light') setDark(); else setLight();
+}
+function setLight() {
+  document.documentElement.setAttribute('data-theme', 'light');
+  document.getElementById('themeIcon').innerHTML = '&#127763;';
+  document.getElementById('themeLabel').textContent = 'Light';
+  localStorage.setItem('sunsynk_theme', 'light');
+}
+function setDark() {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  document.getElementById('themeIcon').innerHTML = '&#127761;';
+  document.getElementById('themeLabel').textContent = 'Dark';
+  localStorage.setItem('sunsynk_theme', 'dark');
+  // Ensure dark mode clears light overrides
+  document.documentElement.removeAttribute('data-theme');
+}
+</script>
+</body>
+</html>

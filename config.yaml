@@ -1,0 +1,17 @@
+inverter:
+  model: "Sunsynk SG02LP1"
+  port: "/dev/ttyUSB0"
+  slave_id: 1
+  baudrate: 9600
+
+polling:
+  interval_seconds: 5
+  batch_size: 20
+
+database:
+  path: "data/inverter.db"
+  retention_days: 365
+
+dashboard:
+  host: "0.0.0.0"
+  port: 8080

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inverter Dashboard - Login</title>
+  <style>
+    :root { --bg:#0a0e14; --surface:#12171f; --surface2:#181e28; --border:#252b36; --text:#e2e8f0; --muted:#7c8798; --accent:#ff6b2b; --red:#f85149; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; overflow:hidden; }
+
+    .container { display:flex; align-items:center; justify-content:center; gap:60px; flex-wrap:wrap; padding:20px; max-width:90vw; }
+    @media (max-width: 700px) { .container { flex-direction:column; gap:20px; } }
+
+    .phoenix-wrapper { position:relative; width:260px; height:320px; flex-shrink:0; }
+
+    /* aura glow */
+    .aura {
+      position:absolute; top:50%; left:50%; width:160px; height:160px;
+      background:radial-gradient(circle, rgba(255,107,43,0.25) 0%, rgba(255,50,0,0.08) 50%, transparent 70%);
+      border-radius:50%; transform:translate(-50%, -50%);
+      animation:auraPulse 2s ease-in-out infinite;
+    }
+    @keyframes auraPulse {
+      0%,100% { transform:translate(-50%,-50%) scale(1); opacity:0.6; }
+      50% { transform:translate(-50%,-50%) scale(1.35); opacity:1; }
+    }
+
+    /* fire particles */
+    .particles { position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:140px; height:200px; }
+    .particle {
+      position:absolute; bottom:-10px; width:4px; height:4px; border-radius:50%;
+      background:var(--accent); opacity:0;
+      animation:rise var(--dur) var(--delay) ease-out infinite;
+    }
+    .particle:nth-child(odd) { background:#ffd700; }
+    .particle:nth-child(3n) { background:#ff4500; width:5px; height:5px; }
+    .particle:nth-child(4n) { background:#ff8c00; width:3px; height:3px; }
+
+    @keyframes rise {
+      0% { transform:translateY(0) translateX(0) scale(0); opacity:0; }
+      10% { opacity:1; }
+      40% { opacity:0.8; transform:translateY(calc(-1 * var(--h))) translateX(calc(var(--drift) * 1px)) scale(1); }
+      100% { transform:translateY(-200px) translateX(calc(var(--drift) * 2px)) scale(0); opacity:0; }
+    }
+
+    /* Phoenix SVG */
+    .phoenix-svg { position:relative; z-index:1; }
+    .flame-left, .flame-right { animation:flameFlicker 0.6s ease-in-out infinite alternate; transform-origin:center bottom; }
+    .flame-right { animation-delay:0.3s; }
+    @keyframes flameFlicker {
+      0% { transform:scaleY(1) scaleX(1); opacity:0.9; }
+      100% { transform:scaleY(1.15) scaleX(0.9); opacity:1; }
+    }
+    .wing-left { animation:wingFlap 1.8s ease-in-out infinite; transform-origin:100px 130px; }
+    .wing-right { animation:wingFlapR 1.8s ease-in-out infinite 0.4s; transform-origin:160px 130px; }
+    @keyframes wingFlap {
+      0%,100% { transform:rotate(-3deg) translateY(0); }
+      50% { transform:rotate(3deg) translateY(-6px); }
+    }
+    @keyframes wingFlapR {
+      0%,100% { transform:rotate(3deg) translateY(0); }
+      50% { transform:rotate(-3deg) translateY(-6px); }
+    }
+    .phoenix-body { animation:bodyFloat 2s ease-in-out infinite; }
+    @keyframes bodyFloat {
+      0%,100% { transform:translateY(0); }
+      50% { transform:translateY(-4px); }
+    }
+    .eye-glow { animation:eyeBlink 4s ease-in-out infinite; }
+    @keyframes eyeBlink {
+      0%,45%,55%,100% { opacity:1; }
+      50% { opacity:0.15; }
+    }
+
+    /* Login */
+    .login-box { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:32px; width:340px; max-width:90vw; }
+    .login-box h1 { font-size:18px; color:var(--accent); margin-bottom:4px; text-align:center; }
+    .login-box .subtitle { font-size:12px; color:var(--muted); text-align:center; margin-bottom:20px; }
+    .field { margin-bottom:12px; }
+    .field label { display:block; font-size:11px; color:var(--muted); margin-bottom:3px; text-transform:uppercase; letter-spacing:0.5px; }
+    .field input { width:100%; background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:8px 12px; border-radius:6px; font-size:14px; outline:none; transition:border-color 0.2s; }
+    .field input:focus { border-color:var(--accent); }
+    .btn { width:100%; background:linear-gradient(135deg, #ff6b2b, #ff4500); color:#fff; border:none; padding:10px; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; margin-top:6px; transition:all 0.2s; }
+    .btn:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 20px rgba(255,107,43,0.3); }
+    .error { background:#3d0e0e; border:1px solid var(--red); border-radius:6px; padding:8px 12px; margin-bottom:14px; font-size:12px; color:var(--red); text-align:center; }
+    .footer { text-align:center; margin-top:14px; font-size:10px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="phoenix-wrapper">
+      <div class="aura"></div>
+      <div class="particles"></div>
+      <svg class="phoenix-svg" viewBox="0 0 260 280" width="260" height="280">
+        <defs>
+          <radialGradient id="bodyGrad" cx="50%" cy="40%" r="50%">
+            <stop offset="0%" stop-color="#ffd700"/>
+            <stop offset="40%" stop-color="#ff8c00"/>
+            <stop offset="100%" stop-color="#cc3300"/>
+          </radialGradient>
+          <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffd700"/>
+            <stop offset="30%" stop-color="#ff6b2b"/>
+            <stop offset="70%" stop-color="#ff4500"/>
+            <stop offset="100%" stop-color="#990000"/>
+          </linearGradient>
+          <linearGradient id="flameGrad" x1="50%" y1="100%" x2="50%" y2="0%">
+            <stop offset="0%" stop-color="#fff"/>
+            <stop offset="20%" stop-color="#ffd700"/>
+            <stop offset="60%" stop-color="#ff6b2b"/>
+            <stop offset="100%" stop-color="#cc0000" stop-opacity="0"/>
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Tail feathers -->
+        <g class="phoenix-body">
+          <path d="M130,230 C120,240 100,270 95,280 C100,265 110,245 125,235" fill="url(#bodyGrad)" opacity="0.7"/>
+          <path d="M130,230 C135,242 140,270 145,280 C140,265 138,248 130,235" fill="url(#bodyGrad)" opacity="0.7"/>
+          <path d="M130,230 C125,238 115,265 110,278 C118,260 125,242 130,233" fill="url(#wingGrad)" opacity="0.6"/>
+          <path d="M130,230 C138,240 148,265 155,278 C145,260 138,240 130,233" fill="url(#wingGrad)" opacity="0.6"/>
+
+          <!-- Body -->
+          <ellipse cx="130" cy="190" rx="28" ry="42" fill="url(#bodyGrad)" filter="url(#glow)"/>
+
+          <!-- Left wing -->
+          <g class="wing-left">
+            <path d="M110,180 C70,150 30,130 20,120 C40,115 70,120 95,140 C70,140 45,130 30,135 C50,135 72,148 95,155 C70,155 48,150 35,160 C55,158 75,165 95,168 C78,170 58,170 48,178 C65,173 82,175 100,178 Z" fill="url(#wingGrad)" filter="url(#glow)" opacity="0.9"/>
+            <path d="M100,175 C72,155 45,140 28,130 C45,128 68,135 90,148 C68,145 48,140 35,145 C52,142 70,150 92,158 C70,158 52,155 40,162 C55,158 72,162 90,165 C75,168 58,168 50,172 C62,167 78,168 93,172 Z" fill="url(#flameGrad)" opacity="0.5"/>
+          </g>
+
+          <!-- Right wing -->
+          <g class="wing-right">
+            <path d="M150,180 C190,150 230,130 240,120 C220,115 190,120 165,140 C190,140 215,130 230,135 C210,135 188,148 165,155 C190,155 212,150 225,160 C205,158 185,165 165,168 C182,170 202,170 212,178 C195,173 178,175 160,178 Z" fill="url(#wingGrad)" filter="url(#glow)" opacity="0.9"/>
+            <path d="M160,175 C188,155 215,140 232,130 C215,128 192,135 170,148 C192,145 212,140 225,145 C208,142 190,150 168,158 C190,158 208,155 220,162 C205,158 188,162 170,165 C185,168 202,168 210,172 C198,167 182,168 167,172 Z" fill="url(#flameGrad)" opacity="0.5"/>
+          </g>
+
+          <!-- Head -->
+          <ellipse cx="130" cy="140" rx="18" ry="20" fill="url(#bodyGrad)" filter="url(#glow)"/>
+          <!-- Crest -->
+          <path class="flame-left" d="M120,128 C116,110 112,95 108,85 C114,95 118,108 120,120 Z" fill="url(#flameGrad)"/>
+          <path class="flame-left" d="M126,122 C124,105 122,90 120,78 C124,90 127,105 128,118 Z" fill="url(#flameGrad)" style="animation-delay:0.15s"/>
+          <path class="flame-right" d="M140,128 C142,108 145,92 148,82 C143,94 140,108 139,120 Z" fill="url(#flameGrad)"/>
+          <path class="flame-right" d="M134,122 C136,105 137,90 138,78 C135,90 133,105 132,118 Z" fill="url(#flameGrad)" style="animation-delay:0.15s"/>
+
+          <!-- Beak -->
+          <polygon points="140,140 155,143 140,147" fill="#ffd700" filter="url(#glow)"/>
+
+          <!-- Eye -->
+          <circle class="eye-glow" cx="138" cy="137" r="3" fill="#fff" filter="url(#glow)"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="login-box">
+      <h1>Inverter</h1>
+      <div class="subtitle">Dashboard</div>
+      {% if error %}
+      <div class="error">{{ error }}</div>
+      {% endif %}
+      <form method="POST">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn">Rise</button>
+      </form>
+      <div class="footer">Inverter Dashboard</div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const container = document.querySelector('.particles');
+      const p = ['var(--h)','var(--drift)','var(--dur)','var(--delay)'];
+      let html = '';
+      for (let i = 0; i < 50; i++) {
+        const h = 40 + Math.random() * 140;
+        const drift = (Math.random() - 0.5) * 80;
+        const dur = 0.8 + Math.random() * 2.2;
+        const delay = Math.random() * 3;
+        const style = `--h:${h}px;--drift:${drift};--dur:${dur}s;--delay:${delay}s;left:${30+Math.random()*80}px`;
+        html += `<div class="particle" style="${style}"></div>`;
+      }
+      container.innerHTML = html;
+    })();
+  </script>
+</body>
+</html>
