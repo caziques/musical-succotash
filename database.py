@@ -2,6 +2,7 @@ import sqlite3
 import json
 import os
 import secrets
+import threading
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -58,6 +59,7 @@ DEFAULT_ADMIN_USERNAME = "admin"
 class Database:
     def __init__(self, db_path: str):
         self.db_path = db_path
+        self._lock = threading.Lock()
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.execute("PRAGMA journal_mode=WAL")
@@ -104,11 +106,12 @@ class Database:
 
     def insert(self, data: dict) -> None:
         ts = data.pop("timestamp", time.time())
-        self.conn.execute(
-            "INSERT INTO readings (timestamp, data) VALUES (?, ?)",
-            (ts, json.dumps(data)),
-        )
-        self.conn.commit()
+        with self._lock:
+            self.conn.execute(
+                "INSERT INTO readings (timestamp, data) VALUES (?, ?)",
+                (ts, json.dumps(data)),
+            )
+            self.conn.commit()
 
     def query_range(self, start_ts: float, end_ts: float) -> list[dict]:
         cursor = self.conn.execute(
@@ -123,12 +126,13 @@ class Database:
         return results
 
     def purge_old(self, retention_days: int) -> int:
-        cutoff = time.time() - (retention_days * 86400)
-        cursor = self.conn.execute(
-            "DELETE FROM readings WHERE timestamp < ?", (cutoff,)
-        )
-        self.conn.commit()
-        self.conn.execute("PRAGMA optimize")
+        with self._lock:
+            cutoff = time.time() - (retention_days * 86400)
+            cursor = self.conn.execute(
+                "DELETE FROM readings WHERE timestamp < ?", (cutoff,)
+            )
+            self.conn.commit()
+            self.conn.execute("PRAGMA optimize")
         return cursor.rowcount
 
     def latest(self) -> dict | None:
@@ -198,11 +202,12 @@ class Database:
         return row[0] if row else None
 
     def set_setting(self, key: str, value: str) -> None:
-        self.conn.execute(
-            "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-            (key, value, value),
-        )
-        self.conn.commit()
+        with self._lock:
+            self.conn.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+                (key, value, value),
+            )
+            self.conn.commit()
 
     def get_all_settings(self) -> dict:
         rows = self.conn.execute("SELECT key, value FROM settings").fetchall()

@@ -104,19 +104,49 @@ class InverterReader:
         result["timestamp"] = time.time()
         result["read_ok"] = True
 
+        # Group sensors by contiguous register ranges for batched reads
+        ranges = {}
         for name, defn in SENSOR_DEFINITIONS.items():
+            start = defn["reg"]
+            end = start + defn["count"] - 1
+            rkey = (start, end)
+            if rkey not in ranges:
+                ranges[rkey] = []
+            ranges[rkey].append((name, defn))
+
+        # Merge overlapping/adjacent ranges (gap <= 2 registers)
+        merged = []
+        for (start, end) in sorted(ranges.keys()):
+            if merged and start - merged[-1][1] <= 3:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+
+        # Read each merged range in one call
+        raw_data = {}
+        for mstart, mend in merged:
             try:
                 rr = self.client.read_holding_registers(
-                    address=defn["reg"] - 1,
-                    count=defn["count"],
+                    address=mstart - 1,
+                    count=mend - mstart + 1,
                     slave=self.slave_id,
                 )
-                if rr.isError():
-                    logger.warning("Read error for %s (reg %d)", name, defn["reg"])
-                    continue
+                if not rr.isError():
+                    for i, val in enumerate(rr.registers):
+                        raw_data[mstart + i] = val
+                else:
+                    logger.warning("Batch read error for regs %d-%d", mstart, mend)
+            except Exception as e:
+                logger.warning("Batch read exception %d-%d: %s", mstart, mend, e)
 
-                regs = tuple(rr.registers)
+        # Parse individual sensors from batched data
+        for name, defn in SENSOR_DEFINITIONS.items():
+            try:
+                reg_start = defn["reg"]
                 count = defn["count"]
+                regs = tuple(raw_data.get(reg_start + i, 0) for i in range(count))
+                if all(v == 0 for v in regs) and not all(reg_start + i in raw_data for i in range(count)):
+                    continue
 
                 if defn.get("is_datetime"):
                     result[name] = _decode_datetime(regs)
@@ -134,9 +164,8 @@ class InverterReader:
                     value = round(value * defn["scale"], 2)
 
                 result[name] = value
-
             except Exception as e:
-                logger.warning("Exception reading %s: %s", name, e)
+                logger.warning("Parse error for %s: %s", name, e)
 
         if len(result) <= 2:
             result["read_ok"] = False

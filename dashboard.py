@@ -316,38 +316,27 @@ def api_totals():
     end_ts = time.time()
     start_ts = end_ts - days * 86400
 
+    # Get the last reading of each day (day_*_energy is cumulative per day)
     rows = db.conn.execute(
-        "SELECT timestamp, data FROM readings WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC",
+        "SELECT timestamp, data FROM readings WHERE id IN ("
+        "  SELECT MAX(id) FROM readings WHERE timestamp >= ? AND timestamp <= ? "
+        "  GROUP BY CAST(timestamp / 86400 AS INTEGER)"
+        ") ORDER BY timestamp DESC",
         (start_ts, end_ts),
     ).fetchall()
 
-    from collections import defaultdict
-    daily = defaultdict(dict)
-
+    result = []
     for ts, data_json in rows:
         record = json.loads(data_json)
-        day_key = time.strftime("%Y-%m-%d", time.localtime(ts))
-        daily[day_key] = {
-            "date": day_key,
-            "load": record.get("day_load_energy") or 0,
-            "solar": record.get("day_pv_energy") or 0,
-            "batt_charge": record.get("day_battery_charge") or 0,
-            "batt_discharge": record.get("day_battery_discharge") or 0,
-            "grid_import": record.get("day_grid_import") or 0,
-            "grid_export": record.get("day_grid_export") or 0,
-        }
-
-    result = sorted(
-        [{"date": v["date"],
-          "load": round(v["load"], 1),
-          "solar": round(v["solar"], 1),
-          "batt_charge": round(v["batt_charge"], 1),
-          "batt_discharge": round(v["batt_discharge"], 1),
-          "grid_import": round(v["grid_import"], 1),
-          "grid_export": round(v["grid_export"], 1)}
-         for v in daily.values()],
-        key=lambda x: x["date"], reverse=True
-    )
+        result.append({
+            "date": time.strftime("%Y-%m-%d", time.localtime(ts)),
+            "load": round(record.get("day_load_energy") or 0, 1),
+            "solar": round(record.get("day_pv_energy") or 0, 1),
+            "batt_charge": round(record.get("day_battery_charge") or 0, 1),
+            "batt_discharge": round(record.get("day_battery_discharge") or 0, 1),
+            "grid_import": round(record.get("day_grid_import") or 0, 1),
+            "grid_export": round(record.get("day_grid_export") or 0, 1),
+        })
     return jsonify(result)
 
 

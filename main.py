@@ -144,11 +144,30 @@ def read_loop(reader, database: Database, interval: int, retention_days: int, st
             consecutive_failures += 1
             logger.error("Read error: %s", e)
 
+        # Reconnect after 10 consecutive failures
+        if consecutive_failures >= 10:
+            logger.warning("Too many failures, attempting reconnection...")
+            try:
+                reader.close()
+                reader.connect()
+                consecutive_failures = 0
+                logger.info("Reconnected successfully")
+            except Exception as re:
+                logger.error("Reconnection failed: %s", re)
+
         if time.time() - last_purge > 86400:
             removed = database.purge_old(retention_days)
             if removed:
                 logger.info("Purged %d old records", removed)
             last_purge = time.time()
+
+        # WAL checkpoint every hour to prevent infinite growth
+        if time.time() - getattr(read_loop, '_last_checkpoint', 0) > 3600:
+            try:
+                database.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                read_loop._last_checkpoint = time.time()
+            except Exception:
+                pass
 
         stop_event.wait(interval)
 
