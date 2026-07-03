@@ -256,8 +256,18 @@ class Database:
         return c.rowcount > 0
 
     def get_rules_to_evaluate(self) -> list[dict]:
-        """Return enabled rules ordered by id."""
-        return self.list_rules()
+        """Return enabled rules."""
+        rows = self.conn.execute(
+            "SELECT id, name, enabled, trigger_field, trigger_op, trigger_value, "
+            "action_type, action_url, action_body, cooldown_seconds, last_fired, created_at "
+            "FROM rules WHERE enabled=1 ORDER BY id"
+        ).fetchall()
+        return [
+            {"id": r[0], "name": r[1], "enabled": bool(r[2]), "trigger_field": r[3],
+             "trigger_op": r[4], "trigger_value": r[5], "action_type": r[6],
+             "action_url": r[7], "action_body": r[8], "cooldown_seconds": r[9],
+             "last_fired": r[10], "created_at": r[11]} for r in rows
+        ]
 
     def set_rule_last_fired(self, rule_id: int, ts: float) -> None:
         self.conn.execute("UPDATE rules SET last_fired=? WHERE id=?", (ts, rule_id))

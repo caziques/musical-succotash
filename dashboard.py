@@ -295,7 +295,7 @@ def api_change_password():
 
     username = session["user"]
     user = db.get_user(username)
-    if not check_password_hash(user["password_hash"], current_pw):
+    if not user or not check_password_hash(user["password_hash"], current_pw):
         return jsonify({"error": "current password is incorrect"}), 403
 
     db.update_user(username, generate_password_hash(new_pw), None)
@@ -464,6 +464,22 @@ def api_generate_test_data():
 @app.route("/api/go-live", methods=["POST"])
 @admin_required
 def api_go_live():
+    import glob
+    ports = []
+    for p in ["/dev/ttyUSB*", "/dev/ttyAMA*", "/dev/ttyACM*", "/dev/serial/by-id/*"]:
+        ports.extend(glob.glob(p))
+    if not ports:
+        return jsonify({"error": "No RS485 adapter detected."}), 404
+    port = ports[0]
+    db.set_setting("port", port)
+    db.set_setting("run_mode", "live")
+    logger.info("Go Live: %s, restarting...", port)
+    from threading import Timer
+    def _r():
+        import sys
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    Timer(0.5, _r).start()
+    return jsonify({"ok": True, "port": port})
 
 
 # ── API: updates ─────────────────────────────────────────────────────────────
@@ -517,22 +533,6 @@ def api_do_update():
         return jsonify({"ok": True, "message": "Updated. Restarting..."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    import glob
-    ports = []
-    for pattern in ["/dev/ttyUSB*", "/dev/ttyAMA*", "/dev/ttyACM*", "/dev/serial/by-id/*"]:
-        ports.extend(glob.glob(pattern))
-    if not ports:
-        return jsonify({"error": "No RS485 adapter detected. Check connection."}), 404
-    port = ports[0]
-    db.set_setting("port", port)
-    db.set_setting("run_mode", "live")
-    logger.info("Go Live: detected %s, restarting...", port)
-    from threading import Timer
-    def _restart():
-        import sys
-        os.execv(sys.executable, [sys.executable] + sys.argv)
-    Timer(0.5, _restart).start()
-    return jsonify({"ok": True, "port": port})# ── API: weather ─────────────────────────────────────────────────────────────
 
 @app.route("/api/weather")
 @api_login_required

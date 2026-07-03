@@ -1000,12 +1000,10 @@ function setLight() {
   localStorage.setItem('sunsynk_theme', 'light');
 }
 function setDark() {
-  document.documentElement.setAttribute('data-theme', 'dark');
+  document.documentElement.removeAttribute('data-theme');
   document.getElementById('themeIcon').innerHTML = '&#127761;';
   document.getElementById('themeLabel').textContent = 'Dark';
   localStorage.setItem('sunsynk_theme', 'dark');
-  // Ensure dark mode clears light overrides
-  document.documentElement.removeAttribute('data-theme');
 }
 </script>
 </body>

@@ -288,7 +288,7 @@
   <div class="panel">
     <h3>Data Management</h3>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn" onclick="generateTestData()">Generate Test Data</button>
+      <button class="btn" onclick="generateTestData(event)">Generate Test Data</button>
       <button class="btn danger" onclick="showClearModal()">Clear All Data</button>
     </div>
   </div>
@@ -474,8 +474,8 @@ async function clearData() {
     btn.textContent = 'Clear Everything';
   }
 }
-async function generateTestData() {
-  const btn = event.target;
+async function generateTestData(e) {
+  const btn = e?.target || document.querySelector('button[onclick*="generateTestData"]');
   btn.disabled = true;
   btn.textContent = 'Generating...';
   const res = await apiFetch('/api/generate-test-data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({hours:50})});
