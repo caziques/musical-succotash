@@ -136,8 +136,21 @@ class InverterReader:
                         raw_data[mstart + i] = val
                 else:
                     logger.warning("Batch read error for regs %d-%d", mstart, mend)
-            except Exception as e:
-                logger.warning("Batch read exception %d-%d: %s", mstart, mend, e)
+            except TypeError:
+                # pymodbus >=3.6 uses 'unit' instead of 'slave'
+                try:
+                    rr = self.client.read_holding_registers(
+                        address=mstart - 1,
+                        count=mend - mstart + 1,
+                        unit=self.slave_id,
+                    )
+                    if not rr.isError():
+                        for i, val in enumerate(rr.registers):
+                            raw_data[mstart + i] = val
+                    else:
+                        logger.warning("Batch read error for regs %d-%d", mstart, mend)
+                except Exception as e2:
+                    logger.warning("Batch read exception %d-%d: %s", mstart, mend, e2)
 
         # Parse individual sensors from batched data
         for name, defn in SENSOR_DEFINITIONS.items():
