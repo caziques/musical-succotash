@@ -243,6 +243,18 @@
   </div>
 
   <div class="panel">
+    <h3>Discord Notifications</h3>
+    <div class="form-row">
+      <label for="discordUrl">Webhook URL</label>
+      <input type="text" id="discordUrl" placeholder="https://discord.com/api/webhooks/..." style="width:400px">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:4px 0 12px 88px">
+      Create a webhook in Discord: Server Settings → Integrations → Webhooks → Copy URL
+    </div>
+    <button class="btn" onclick="saveDiscord()">Save &amp; Test</button>
+  </div>
+
+  <div class="panel">
     <h3>Change Password</h3>
     <div class="form-row">
       <label for="currentPw">Current Password</label>
@@ -345,6 +357,7 @@ async function loadAll() {
   document.getElementById('weatherKey').value = settings.weather_key || '';
   document.getElementById('weatherCity').value = settings.weather_city || '';
   document.getElementById('weatherApiName').value = settings.weather_api_name || '';
+  document.getElementById('discordUrl').value = settings.discord_url || '';
   document.getElementById('gitRepo').value = settings.git_repo || '';
 
   const users = await apiFetch('/api/users').then(r=>r.json());
@@ -389,6 +402,21 @@ async function saveWeather() {
   const res = await apiFetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
   if(res.ok) msg('Weather settings saved.', 'ok');
   else msg('Failed to save.', 'err');
+}
+
+async function saveDiscord() {
+  const url = document.getElementById('discordUrl').value;
+  const body = { discord_url: url };
+  const res = await apiFetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if(res.ok) {
+    msg('Saved. Testing notification...', 'ok');
+    const t = await apiFetch('/api/discord-test', {method:'POST'});
+    const d = await t.json();
+    if(t.ok) msg('Test message sent to Discord!', 'ok');
+    else msg(d.error || 'Test failed', 'err');
+  } else {
+    msg('Failed to save.', 'err');
+  }
 }
 
 async function changePassword() {

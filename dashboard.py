@@ -523,6 +523,29 @@ def api_do_update():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── API: discord ─────────────────────────────────────────────────────────────
+
+@app.route("/api/discord-test", methods=["POST"])
+@admin_required
+def api_discord_test():
+    url = db.get_setting("discord_url") or ""
+    if not url:
+        return jsonify({"error": "No Discord webhook URL configured"}), 400
+    try:
+        msg = {
+            "embeds": [{
+                "title": "Inverter Dashboard",
+                "description": "Test notification - Discord integration is working!",
+                "color": 3066993,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }]
+        }
+        req = urllib.request.Request(url, data=json.dumps(msg).encode(), headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=5)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
 @app.route("/api/weather")
 @api_login_required
 def api_weather():

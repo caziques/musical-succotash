@@ -119,6 +119,18 @@ def read_loop(reader, database: Database, interval: int, retention_days: int, st
     logger.info("Reader loop started (interval=%ds)", interval)
     last_purge = 0
     consecutive_failures = 0
+    last_grid_state = None
+
+    def _discord(msg):
+        url = database.get_setting("discord_url") or ""
+        if not url:
+            return
+        try:
+            body = json.dumps({"embeds": [{"title": "Inverter Alert", "description": msg, "color": 16711680, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}]}).encode()
+            req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+            urllib.request.urlopen(req, timeout=5)
+        except Exception:
+            pass
 
     while not stop_event.is_set():
         try:
@@ -134,6 +146,15 @@ def read_loop(reader, database: Database, interval: int, retention_days: int, st
                     (data.get("pv1_power", 0) or 0) + (data.get("pv2_power", 0) or 0),
                     data.get("battery_power", "?"),
                 )
+
+                # Grid state change notifications
+                gs = data.get("grid_connected", 1)
+                if last_grid_state is not None and gs != last_grid_state:
+                    if gs == 0:
+                        _discord(f"**Grid outage detected!** Battery at {data.get('battery_soc','?')}%")
+                    else:
+                        _discord(f"**Grid restored.** Battery at {data.get('battery_soc','?')}%")
+                last_grid_state = gs
             else:
                 consecutive_failures += 1
                 if consecutive_failures <= 3:
