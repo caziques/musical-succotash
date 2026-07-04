@@ -93,15 +93,34 @@
 
     /* Energy flow */
     .flow-wrap {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      padding: 8px; margin-bottom: 14px; overflow: hidden;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      display: grid; grid-template-columns: 1fr 100px 1fr; grid-template-rows: auto 120px auto;
+      gap: 0; align-items: center; justify-items: center; position: relative;
+      padding: 10px 0; margin-bottom: 14px; min-height: 340px; overflow: hidden;
     }
-    .flow-line { stroke-dashoffset: 0; }
-    .flow-line:nth-child(1) { animation: dash 1.5s linear infinite; }
-    .flow-line:nth-child(2) { animation: dash 1.5s linear infinite 0.3s; }
-    .flow-line:nth-child(3) { animation: dash 1.5s linear infinite 0.6s; }
-    .flow-line:nth-child(4) { animation: dash 1.5s linear infinite 0.9s; }
-    @keyframes dash { 0%{stroke-dashoffset:26} 100%{stroke-dashoffset:0} }
+    .flow-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    .flow-line:nth-child(1) { animation: dash 1.5s linear infinite; stroke-dashoffset: 0; }
+    .flow-line:nth-child(2) { animation: dash 1.5s linear infinite 0.3s; stroke-dashoffset: 0; }
+    .flow-line:nth-child(3) { animation: dash 1.5s linear infinite 0.6s; stroke-dashoffset: 0; }
+    .flow-line:nth-child(4) { animation: dash 1.5s linear infinite 0.9s; stroke-dashoffset: 0; }
+    @keyframes dash { 0%{stroke-dashoffset:24} 100%{stroke-dashoffset:0} }
+
+    .flow-node { display: flex; flex-direction: column; align-items: center; gap: 3px; z-index: 2; text-align: center; }
+    .flow-solar { grid-column:1; grid-row:1; }
+    .flow-grid  { grid-column:3; grid-row:1; }
+    .flow-inv   { grid-column:2; grid-row:2; }
+    .flow-batt  { grid-column:1; grid-row:3; }
+    .flow-home  { grid-column:3; grid-row:3; }
+    .flow-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+    .flow-val { font-size: 18px; font-weight: 700; }
+    .flow-sub { font-size: 10px; color: var(--muted); }
+
+    .outage-banner {
+      grid-column: 1 / -1; grid-row: 1; z-index: 3; display: none;
+      background: #3d0e0e; border: 1px solid var(--red); border-radius: 6px;
+      padding: 4px 12px; font-size: 11px; color: #f87171; text-align: center;
+      align-self: start; justify-self: center; margin-top: 4px;
+    }
 
     .weather-bar {
       background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
@@ -117,7 +136,9 @@
     .theme-toggle { padding: 8px 14px; }
 
     @media (max-width: 600px) {
-      .flow-wrap { padding: 4px; }
+      .flow-wrap { grid-template-columns: 1fr 70px 1fr; grid-template-rows: auto 90px auto; min-height: 280px; padding: 6px 0; }
+      .flow-val { font-size: 14px; }
+      .flow-node svg { width: 30px; height: 30px; }
     }
 
     /* Light theme */
@@ -311,111 +332,66 @@ function renderSection(section) {
 
     html += `
     <div class="flow-wrap">
-      <svg viewBox="0 0 500 360" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-height:400px">
-        <defs>
-          <marker id="arrSolar" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="#fbbf24"/></marker>
-          <marker id="arrGrid" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="#60a5fa"/></marker>
-          <marker id="arrBatt" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="#34d399"/></marker>
-          <marker id="arrHome" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="#a0aec0"/></marker>
-          <filter id="glowS"><feGaussianBlur stdDeviation="2"/></filter>
-        </defs>
-
-        <!-- Flow lines -->
-        <line x1="110" y1="100" x2="220" y2="158" stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="8,5" opacity="0.6" class="flow-line"/>
-        <line x1="280" y1="158" x2="390" y2="100" stroke="#60a5fa" stroke-width="2.5" stroke-dasharray="8,5" opacity="0.6" class="flow-line"/>
-        <line x1="220" y1="195" x2="130" y2="260" stroke="#34d399" stroke-width="2.5" stroke-dasharray="8,5" opacity="0.6" class="flow-line"/>
-        <line x1="280" y1="195" x2="370" y2="260" stroke="#a0aec0" stroke-width="2.5" stroke-dasharray="8,5" opacity="0.6" class="flow-line"/>
-
-        <!-- Power labels on flow lines -->
-        <g font-size="11" font-weight="700" text-anchor="middle">
-          <rect x="125" y="118" width="50" height="16" rx="4" fill="#12171f" opacity="0.85"/>
-          <text x="150" y="129" fill="#fbbf24">${Math.round(pvTotal)}W</text>
-          <rect x="325" y="118" width="50" height="16" rx="4" fill="#12171f" opacity="0.85"/>
-          <text x="350" y="129" fill="#60a5fa">${Math.round(Math.abs(gridVal))}W</text>
-          <rect x="135" y="248" width="50" height="16" rx="4" fill="#12171f" opacity="0.85"/>
-          <text x="160" y="259" fill="#34d399">${Math.round(Math.abs(battVal))}W</text>
-          <rect x="305" y="248" width="50" height="16" rx="4" fill="#12171f" opacity="0.85"/>
-          <text x="330" y="259" fill="#a0aec0">${Math.round(loadVal)}W</text>
-        </g>
-
-        <!-- Animated flow dots -->
-        <circle r="3" fill="#fbbf24" opacity="0"><animate attributeName="cx" values="110;220" dur="1.8s" repeatCount="indefinite"/><animate attributeName="cy" values="100;158" dur="1.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" repeatCount="indefinite"/></circle>
-        <circle r="3" fill="#60a5fa" opacity="0"><animate attributeName="cx" values="280;390" dur="1.8s" begin="0.3s" repeatCount="indefinite"/><animate attributeName="cy" values="158;100" dur="1.8s" begin="0.3s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.3s" repeatCount="indefinite"/></circle>
-        <circle r="3" fill="#34d399" opacity="0"><animate attributeName="cx" values="220;130" dur="1.8s" begin="0.6s" repeatCount="indefinite"/><animate attributeName="cy" values="195;260" dur="1.8s" begin="0.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.6s" repeatCount="indefinite"/></circle>
-        <circle r="3" fill="#a0aec0" opacity="0"><animate attributeName="cx" values="280;370" dur="1.8s" begin="0.9s" repeatCount="indefinite"/><animate attributeName="cy" values="195;260" dur="1.8s" begin="0.9s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.9s" repeatCount="indefinite"/></circle>
-
-        <!-- SOLAR -->
-        <g transform="translate(50,42)">
-          <rect x="0" y="0" width="120" height="90" rx="12" fill="#12171f" stroke="#fbbf24" stroke-width="1" opacity="0.9"/>
-          <rect x="44" y="10" width="8" height="12" rx="2" fill="#fbbf24"/>
-          <rect x="44" y="32" width="8" height="10" rx="2" fill="#fbbf24"/>
-          <rect x="30" y="16" width="12" height="8" rx="2" fill="#fbbf24"/>
-          <rect x="54" y="16" width="12" height="8" rx="2" fill="#fbbf24"/>
-          <rect x="42" y="16" width="12" height="12" rx="3" fill="#fbbf24"/>
-          <circle cx="48" cy="22" r="4" fill="#fef3c7"/>
-          <text x="65" y="24" fill="#fbbf24" font-size="18" font-weight="700">${Math.round(pvTotal)}</text>
-          <text x="67" y="36" fill="#64748b" font-size="9">W</text>
-          <text x="60" y="72" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="middle">SOLAR</text>
-        </g>
-
-        <!-- GRID -->
-        <g transform="translate(330,42)">
-          <rect x="0" y="0" width="120" height="90" rx="12" fill="#12171f" stroke="#60a5fa" stroke-width="1" opacity="0.9"/>
-          <path d="M15,18 L36,4 L36,10 L32,10 L28,14 L28,26 L15,26 Z" fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-linejoin="round"/>
-          <circle cx="30" cy="10" r="3" fill="#60a5fa"/>
-          <text x="65" y="24" fill="${gridVal>=0?'#60a5fa':'#f87171'}" font-size="18" font-weight="700">${Math.round(Math.abs(gridVal))}</text>
-          <text x="67" y="36" fill="#64748b" font-size="9">W</text>
-          <text x="60" y="52" fill="${gridVal>=0?'#60a5fa':'#f87171'}" font-size="9" font-weight="600" text-anchor="middle">${gridVal>=0?'IMPORTING':'EXPORTING'}</text>
-          <text x="60" y="82" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="middle">GRID</text>
-        </g>
-
-        <!-- INVERTER -->
-        <g transform="translate(202,146)">
-          <circle cx="48" cy="48" r="44" fill="#12171f" stroke="#8b5cf6" stroke-width="1.2"/>
-          <circle cx="48" cy="48" r="36" fill="none" stroke="#8b5cf6" stroke-width="0.8" stroke-dasharray="4,6" opacity="0.3">
-            <animateTransform attributeName="transform" type="rotate" from="0 48 48" to="360 48 48" dur="12s" repeatCount="indefinite"/>
-          </circle>
-          <rect x="30" y="30" width="36" height="36" rx="5" fill="none" stroke="#a78bfa" stroke-width="2.2"/>
-          <circle cx="48" cy="42" r="4" fill="#a78bfa"><animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/></circle>
-          <rect x="36" y="50" width="24" height="3" rx="1" fill="#a78bfa"/>
-          <rect x="39" y="56" width="18" height="2" rx="1" fill="#a78bfa"/>
-          <text x="48" y="84" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">INVERTER</text>
-          <text x="48" y="96" fill="${l.grid_connected?'#34d399':'#f87171'}" font-size="9" text-anchor="middle">${l.grid_connected?'ACTIVE':'STANDBY'}</text>
-        </g>
-
-        <!-- BATTERY -->
-        <g transform="translate(50,248)">
-          <rect x="0" y="0" width="120" height="90" rx="12" fill="#12171f" stroke="#34d399" stroke-width="1" opacity="0.9"/>
-          <rect x="10" y="20" width="28" height="28" rx="4" fill="none" stroke="#34d399" stroke-width="1.8"/>
-          <rect x="13" y="${23 + Math.round(22*(1-soc/100))}" width="8" height="${Math.round(22*soc/100)}" rx="1.5" fill="#34d399"/>
-          <rect x="18" y="14" width="12" height="6" rx="2" fill="none" stroke="#34d399" stroke-width="1.5"/>
-          <text x="65" y="28" fill="#34d399" font-size="20" font-weight="700">${soc}%</text>
-          <text x="65" y="44" fill="${battVal<0?'#34d399':'#f87171'}" font-size="9" font-weight="600" text-anchor="middle">${Math.round(Math.abs(battVal))}W ${battVal<0?'CHARGE':'DISCHARGE'}</text>
-          <text x="60" y="82" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="middle">BATTERY</text>
-        </g>
-
-        <!-- HOME -->
-        <g transform="translate(330,248)">
-          <rect x="0" y="0" width="120" height="90" rx="12" fill="#12171f" stroke="#a0aec0" stroke-width="1" opacity="0.9"/>
-          <path d="M22,28 L34,18 L46,28 L42,28 L42,46 L38,46 L38,36 L30,36 L30,46 L26,46 L26,28 Z" fill="none" stroke="#a0aec0" stroke-width="2" stroke-linejoin="round"/>
-          <rect x="30" y="40" width="8" height="6" rx="1" fill="#64748b"/>
-          <text x="65" y="28" fill="#e2e8f0" font-size="20" font-weight="700">${Math.round(loadVal)}</text>
-          <text x="67" y="40" fill="#64748b" font-size="9">W</text>
-          <text x="60" y="82" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="middle">HOME</text>
-        </g>
-
-        <!-- Outage banner -->
-        <g id="outageOverlay" visibility="${l.grid_connected?'hidden':'visible'}">
-          <rect x="0" y="0" width="500" height="20" rx="6" fill="#3d0e0e" opacity="0.9"/>
-          <text x="250" y="14" fill="#f87171" font-size="10" text-anchor="middle" font-weight="600">
-            GRID OUTAGE - <tspan id="outageDur">--</tspan> &middot; Est. battery: <tspan id="estRuntime">--</tspan>
-          </text>
-        </g>
+      <!-- Flow lines -->
+      <svg class="flow-lines" viewBox="0 0 600 340" preserveAspectRatio="xMidYMid meet">
+        <line class="flow-line" x1="150" y1="130" x2="272" y2="160" stroke="#fbbf24" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+        <line class="flow-line" x1="328" y1="160" x2="450" y2="130" stroke="#60a5fa" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+        <line class="flow-line" x1="272" y1="220" x2="150" y2="230" stroke="#34d399" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+        <line class="flow-line" x1="328" y1="220" x2="450" y2="230" stroke="#a0aec0" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+        <!-- Wattage labels on lines -->
+        <text x="205" y="142" fill="#fbbf24" font-size="10" font-weight="700" text-anchor="middle" opacity="0.8">${pvTotal}W</text>
+        <text x="395" y="142" fill="#60a5fa" font-size="10" font-weight="700" text-anchor="middle" opacity="0.8">${Math.abs(gridVal)}W</text>
+        <text x="205" y="235" fill="#34d399" font-size="10" font-weight="700" text-anchor="middle" opacity="0.8">${Math.abs(battVal)}W</text>
+        <text x="395" y="235" fill="#a0aec0" font-size="10" font-weight="700" text-anchor="middle" opacity="0.8">${loadVal}W</text>
+        <!-- Animated dots -->
+        <circle r="3" fill="#fbbf24" opacity="0"><animate attributeName="cx" values="150;272" dur="1.8s" repeatCount="indefinite"/><animate attributeName="cy" values="130;160" dur="1.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" repeatCount="indefinite"/></circle>
+        <circle r="3" fill="#60a5fa" opacity="0"><animate attributeName="cx" values="328;450" dur="1.8s" begin="0.3s" repeatCount="indefinite"/><animate attributeName="cy" values="160;130" dur="1.8s" begin="0.3s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.3s" repeatCount="indefinite"/></circle>
+        <circle r="3" fill="#34d399" opacity="0"><animate attributeName="cx" values="272;150" dur="1.8s" begin="0.6s" repeatCount="indefinite"/><animate attributeName="cy" values="220;230" dur="1.8s" begin="0.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.6s" repeatCount="indefinite"/></circle>
+        <circle r="3" fill="#a0aec0" opacity="0"><animate attributeName="cx" values="328;450" dur="1.8s" begin="0.9s" repeatCount="indefinite"/><animate attributeName="cy" values="220;230" dur="1.8s" begin="0.9s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.8s" begin="0.9s" repeatCount="indefinite"/></circle>
       </svg>
+
+      <!-- Outage banner -->
+      <div class="outage-banner" id="outageBanner" style="display:${l.grid_connected?'none':'block'}">
+        <span>Grid outage - </span><span id="outageDur">--</span><span> &middot; Est. battery: </span><span id="estRuntime">--</span>
+      </div>
+
+      <div class="flow-node flow-solar">
+        <svg width="42" height="42" viewBox="0 0 42 42"><rect x="17" y="3" width="8" height="12" rx="2" fill="#fbbf24"/><rect x="17" y="27" width="8" height="12" rx="2" fill="#fbbf24"/><rect x="3" y="17" width="12" height="8" rx="2" fill="#fbbf24"/><rect x="27" y="17" width="12" height="8" rx="2" fill="#fbbf24"/><rect x="15" y="15" width="12" height="12" rx="3" fill="#fbbf24"/><circle cx="21" cy="21" r="4" fill="#fef3c7"/></svg>
+        <span class="flow-label">SOLAR</span>
+        <span class="flow-val" style="color:#fbbf24">${pvTotal} W</span>
+      </div>
+
+      <div class="flow-node flow-grid">
+        <svg width="42" height="42" viewBox="0 0 42 42"><path d="M21 4 L21 8 M13 8 L29 8 M11 12 L21 8 L31 12 M11 12 L11 34 L13 34 L13 12 M31 12 L31 34 L29 34 L29 12 M9 20 L33 20 M7 28 L35 28 M5 34 L37 34" fill="none" stroke="#60a5fa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="6" r="2" fill="#60a5fa"/></svg>
+        <span class="flow-label">GRID</span>
+        <span class="flow-val" style="color:${gridVal>=0?'#60a5fa':'#f87171'}">${Math.abs(gridVal)} W</span>
+        <span class="flow-sub" style="color:${gridVal>=0?'#60a5fa':'#f87171'}">${gridVal>=0?'IMPORTING':'EXPORTING'}</span>
+      </div>
+
+      <div class="flow-node flow-inv">
+        <svg width="56" height="56" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="25" fill="none" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,8" opacity="0.3"><animateTransform attributeName="transform" type="rotate" from="0 28 28" to="360 28 28" dur="10s" repeatCount="indefinite"/></circle>
+          <rect x="18" y="18" width="20" height="20" rx="4" fill="none" stroke="#a78bfa" stroke-width="2"/>
+          <circle cx="28" cy="25" r="3" fill="#a78bfa"><animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite"/></circle>
+          <rect x="23" y="31" width="10" height="2" rx="0.5" fill="#a78bfa"/>
+          <rect x="24" y="34" width="8" height="1.5" rx="0.5" fill="#a78bfa"/>
+        </svg>
+        <span class="flow-label" style="color:#a78bfa">INVERTER</span>
+        <span class="flow-sub">${l.grid_connected ? 'Active' : 'Standby'}</span>
+      </div>
+
+      <div class="flow-node flow-batt">
+        <svg width="42" height="42" viewBox="0 0 42 42"><rect x="5" y="14" width="28" height="22" rx="3" fill="none" stroke="#34d399" stroke-width="2"/><rect x="8" y="${16 + Math.round(18*(1-soc/100))}" width="8" height="${Math.round(18*soc/100)}" rx="1" fill="#34d399"/><rect x="14" y="10" width="10" height="4" rx="2" fill="none" stroke="#34d399" stroke-width="1.5"/></svg>
+        <span class="flow-label">BATTERY</span>
+        <span class="flow-val" style="color:#34d399">${soc}%</span>
+        <span class="flow-sub" style="color:${battVal<0?'#34d399':'#f87171'}">${Math.abs(battVal)}W ${battVal<0?'Charging':'Discharging'}</span>
+      </div>
+
+      <div class="flow-node flow-home">
+        <svg width="42" height="42" viewBox="0 0 42 42"><path d="M21 5 L5 18 L9 18 L9 37 L18 37 L18 27 L24 27 L24 37 L33 37 L33 18 L37 18 Z" fill="none" stroke="#a0aec0" stroke-width="2" stroke-linejoin="round"/><rect x="18" y="31" width="6" height="6" rx="1" fill="#64748b"/></svg>
+        <span class="flow-label">HOME</span>
+        <span class="flow-val" style="color:#e2e8f0">${loadVal} W</span>
+      </div>
     </div>
 
     <div class="weather-bar" id="weatherBar">
@@ -953,28 +929,32 @@ function renderWeather(w) {
 
 let outageTick = null;
 function updateOutageTimer(gs) {
-  const durEl = document.getElementById('outageDur');
-  const estEl = document.getElementById('estRuntime');
-  const overlay = document.getElementById('outageOverlay');
-  if(!durEl) return;
+  const banner = document.getElementById('outageBanner');
+  if(!banner) return;
   if(gs.connected) {
-    if(overlay) overlay.setAttribute('visibility', 'hidden');
+    banner.style.display = 'none';
     if(outageTick) { clearInterval(outageTick); outageTick = null; }
     return;
   }
-  if(overlay) overlay.setAttribute('visibility', 'visible');
+  banner.style.display = 'block';
+  const dur = gs.outage_seconds || 0;
   function update() {
-    const secs = gs.outage_seconds;
+    const total = dur + Math.floor((Date.now()/1000) - (Date.now()/1000 - dur)); // will update on tick
+    // Actually just use the original outage_seconds + elapsed
+    const secs = gs.outage_seconds + (outageTick ? Math.floor((Date.now()/1000) - (Date.now()/1000)) : 0);
     const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
-    durEl.textContent = `${h}h ${m}m ${s}s`;
+    document.getElementById('outageDur').textContent = `${h}h ${m}m ${s}s`;
     const soc = (latestData?.battery_soc || 0);
     const load = (latestData?.load_power || 100);
-    const estH = load > 0 ? (soc / 100 * 4800 / load) : 0;
-    estEl.textContent = `${estH.toFixed(1)}h`;
+    const estH = load > 0 ? (soc / 100 * 4800 / load) : 0; // ~4.8kWh battery
+    document.getElementById('estRuntime').textContent = `${estH.toFixed(1)}h`;
   }
   update();
   if(outageTick) clearInterval(outageTick);
-  outageTick = setInterval(() => { gs.outage_seconds++; update(); }, 1000);
+  outageTick = setInterval(() => {
+    gs.outage_seconds++;
+    update();
+  }, 1000);
 }
 
 initDatePickers();
