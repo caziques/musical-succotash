@@ -273,20 +273,43 @@ def main():
 
     if not args.serve_only:
         run_mode = database.get_setting("run_mode") or "simulate"
-        if args.simulate or run_mode != "live":
+        port = database.get_setting("port") or config.get("inverter", {}).get("port", "/dev/ttyUSB0")
+
+        if args.simulate:
             reader = SimulatedReader()
-            logger.info("Using SIMULATED inverter data (run_mode=%s)", run_mode)
-        else:
-            port = database.get_setting("port") or config.get("inverter", {}).get("port", "/dev/ttyUSB0")
+            logger.info("Using SIMULATED inverter data (--simulate flag)")
+        elif run_mode == "live":
             slave_id = int(database.get_setting("slave_id") or config.get("inverter", {}).get("slave_id", 1))
             baudrate = int(database.get_setting("baudrate") or config.get("inverter", {}).get("baudrate", 9600))
             logger.info("Connecting to inverter on %s (id=%d, baud=%d)...", port, slave_id, baudrate)
             reader = InverterReader(port=port, slave_id=slave_id, baudrate=baudrate)
             if not reader.connect():
-                logger.error("Failed to connect to inverter on %s. Falling back to simulate.", port)
+                logger.error("Failed to connect to inverter on %s. Check wiring.", port)
                 reader = SimulatedReader()
             else:
                 logger.info("Connected to inverter in LIVE mode")
+        else:
+            # Auto-detect: try live if port exists, fall back to simulate
+            import glob as _glob
+            ports = []
+            for p in ["/dev/ttyUSB*", "/dev/ttyAMA*", "/dev/ttyACM*", "/dev/serial/by-id/*"]:
+                ports.extend(_glob.glob(p))
+            if ports:
+                port = ports[0]
+                slave_id = int(database.get_setting("slave_id") or config.get("inverter", {}).get("slave_id", 1))
+                baudrate = int(database.get_setting("baudrate") or config.get("inverter", {}).get("baudrate", 9600))
+                logger.info("Auto-detected port %s, trying LIVE mode...", port)
+                reader = InverterReader(port=port, slave_id=slave_id, baudrate=baudrate)
+                if reader.connect():
+                    database.set_setting("port", port)
+                    database.set_setting("run_mode", "live")
+                    logger.info("Connected to inverter in LIVE mode")
+                else:
+                    logger.warning("Port %s found but connection failed. Using simulate.", port)
+                    reader = SimulatedReader()
+            else:
+                reader = SimulatedReader()
+                logger.info("Using SIMULATED inverter data (no serial port found)")
 
         reader_thread = threading.Thread(
             target=read_loop,
