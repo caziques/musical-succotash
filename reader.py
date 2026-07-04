@@ -37,6 +37,7 @@ SENSOR_DEFINITIONS = {
     "load_power":        {"reg": 178, "count": 1, "unit": "W", "signed": True},
     "battery_temp":      {"reg": 182, "count": 1, "scale": 0.1, "unit": "°C", "signed": False},
     "battery_voltage":   {"reg": 183, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
+    "battery_voltage_alt":{"reg": 587, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
     "battery_soc":       {"reg": 184, "count": 1, "unit": "%", "signed": False},
     # Alternative SOC from BMS for systems with CAN battery communication
     "battery_soc_bms":   {"reg": 273, "count": 1, "unit": "%", "signed": False},
@@ -201,5 +202,11 @@ class InverterReader:
         bms_soc = result.get("battery_soc_bms")
         if bms_soc is not None and 0 <= bms_soc <= 100:
             result["battery_soc"] = bms_soc
+
+        # Use alt battery voltage (reg 587) if standard (183) looks wrong (< 40V for 48V system)
+        vol = result.get("battery_voltage")
+        vol_alt = result.get("battery_voltage_alt")
+        if vol_alt is not None and vol_alt > 40 and (vol is None or vol < 40):
+            result["battery_voltage"] = vol_alt
 
         return result
