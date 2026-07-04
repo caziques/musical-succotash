@@ -129,11 +129,21 @@ class InverterReader:
         raw_data = {}
         for mstart, mend in merged:
             try:
-                rr = self.client.read_holding_registers(
-                    address=mstart - 1,
-                    count=mend - mstart + 1,
-                    slave=self.slave_id,
-                )
+                # Try pymodbus 3.x parameter names
+                rr = None
+                for param_name in ['slave', 'unit', 'device_id']:
+                    try:
+                        rr = self.client.read_holding_registers(
+                            address=mstart - 1,
+                            count=mend - mstart + 1,
+                            **{param_name: self.slave_id},
+                        )
+                        break
+                    except TypeError:
+                        continue
+                if rr is None:
+                    logger.warning("Could not find valid parameter for read_holding_registers")
+                    continue
                 if not rr.isError():
                     for i, val in enumerate(rr.registers):
                         raw_data[mstart + i] = val
