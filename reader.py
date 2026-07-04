@@ -38,6 +38,9 @@ SENSOR_DEFINITIONS = {
     "battery_temp":      {"reg": 182, "count": 1, "scale": 0.1, "unit": "°C", "signed": False},
     "battery_voltage":   {"reg": 183, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
     "battery_soc":       {"reg": 184, "count": 1, "unit": "%", "signed": False},
+    # Alternative battery SOC registers for BMS-connected systems
+    "battery_soc_alt":   {"reg": 588, "count": 1, "unit": "%", "signed": False},
+    "battery_soc_bms":   {"reg": 603, "count": 1, "unit": "%", "signed": False},
     "pv1_power":         {"reg": 186, "count": 1, "unit": "W", "signed": True},
     "pv2_power":         {"reg": 187, "count": 1, "unit": "W", "signed": True},
     "battery_power":     {"reg": 190, "count": 1, "unit": "W", "signed": True},
