@@ -438,6 +438,7 @@ function renderSection(section) {
     </div>`;
 
   } else if(section === 'battery') {
+    const l = latestData || {};
     html += `
     <div class="charts-2">
       <div class="chart-card"><h3>Battery SOC & Power</h3><canvas id="chart-batt-soc-power"></canvas></div>
@@ -446,6 +447,26 @@ function renderSection(section) {
     <div class="charts-2">
       <div class="chart-card"><h3>Battery Charge/Discharge Current Limits</h3><canvas id="chart-batt-limits"></canvas></div>
       <div class="chart-card"><h3>Battery Temperature (°C)</h3><canvas id="chart-batt-temp"></canvas></div>
+    </div>
+    <div class="yield-grid" style="margin-bottom:12px">
+      <div class="yield-card">
+        <h3>Battery Settings</h3>
+        <div class="yield-row"><span class="key">Float Voltage</span><span class="val">${l.battery_float_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Absorption Voltage</span><span class="val">${l.battery_absorption_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Equalization Voltage</span><span class="val">${l.battery_equalization_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Charging Voltage</span><span class="val">${l.battery_charging_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Max Charge Current</span><span class="val">${l.battery_max_charge_a||'--'} A</span></div>
+        <div class="yield-row"><span class="key">Max Discharge Current</span><span class="val">${l.battery_max_discharge_a||'--'} A</span></div>
+      </div>
+      <div class="yield-card">
+        <h3>Protection Thresholds</h3>
+        <div class="yield-row"><span class="key">Shutdown Voltage</span><span class="val">${l.battery_shutdown_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Low Voltage</span><span class="val">${l.battery_low_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Restart Voltage</span><span class="val">${l.battery_restart_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Shutdown SOC</span><span class="val">${l.battery_shutdown_cap||'--'}%</span></div>
+        <div class="yield-row"><span class="key">Low SOC</span><span class="val">${l.battery_low_cap||'--'}%</span></div>
+        <div class="yield-row"><span class="key">Restart SOC</span><span class="val">${l.battery_restart_cap||'--'}%</span></div>
+      </div>
     </div>`;
 
   } else if(section === 'solar') {
@@ -531,6 +552,7 @@ function renderSection(section) {
     </div>`;
 
   } else if(section === 'system') {
+    const l = latestData || {};
     html += `
     <div class="charts-2">
       <div class="chart-card"><h3>System Temperatures (°C)</h3><canvas id="chart-system-temps"></canvas></div>
@@ -539,6 +561,22 @@ function renderSection(section) {
     <div class="charts-2">
       <div class="chart-card"><h3>Overall State</h3><canvas id="chart-system-state"></canvas></div>
       <div class="chart-card"><h3>Battery Charge/Discharge Limits (A)</h3><canvas id="chart-system-limits"></canvas></div>
+    </div>
+    <div class="charts-2">
+      <div class="yield-card" style="grid-column:1/-1">
+        <h3>Status</h3>
+        <div class="yield-row"><span class="key">Faults</span><span class="val" style="color:${l.fault&&l.fault!='None'?'var(--red)':'var(--green)'}">${l.fault||'None'}</span></div>
+        <div class="yield-row"><span class="key">BMS Protocol</span><span class="val">${l.bms_protocol||'--'}</span></div>
+        <div class="yield-row"><span class="key">Inverter</span><span class="val">${l.inverter_enabled?'Enabled':'Disabled'}</span></div>
+        <div class="yield-row"><span class="key">AUX Port</span><span class="val">${l.aux_port_usage||'--'}</span></div>
+        <div class="yield-row"><span class="key">Use Timer</span><span class="val">${l.use_timer?'Yes':'No'}</span></div>
+        <div class="yield-row"><span class="key">Priority Load</span><span class="val">${l.priority_load?'Enabled':'Disabled'}</span></div>
+        <div class="yield-row"><span class="key">Solar Export</span><span class="val">${l.solar_export?'Enabled':'Disabled'}</span></div>
+        <div class="yield-row"><span class="key">Grid Charge</span><span class="val">${l.grid_charge_enabled?'Enabled':'Disabled'}</span></div>
+        <div class="yield-row"><span class="key">DC Transf. Temp</span><span class="val">${l.dc_transformer_temp||'--'}°C</span></div>
+        <div class="yield-row"><span class="key">Radiator Temp</span><span class="val">${l.radiator_temp||'--'}°C</span></div>
+        <div class="yield-row"><span class="key">Environment Temp</span><span class="val">${l.environment_temp||'--'}°C</span></div>
+      </div>
     </div>`;
   }
 
