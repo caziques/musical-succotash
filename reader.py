@@ -196,6 +196,10 @@ class InverterReader:
                 if "scale" in defn:
                     value = round(value * defn["scale"], 2)
 
+                # Temperature sensors have a -100 offset (reg value 1143 = 14.3°C)
+                if "temp" in defn.get("unit", ""):
+                    value = round(value - 100, 1)
+
                 result[name] = value
             except Exception as e:
                 logger.warning("Parse error for %s: %s", name, e)
