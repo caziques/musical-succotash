@@ -157,6 +157,15 @@ def api_history():
         start_ts = end_ts - hours * 3600
 
     records = db.query_range(start_ts, end_ts)
+
+    # Down-sample: cap at ~500 points for chart performance
+    if len(records) > 500:
+        step = len(records) / 500
+        sampled = []
+        for i in range(500):
+            sampled.append(records[int(i * step)])
+        records = sampled
+
     return jsonify(records)
 
 
