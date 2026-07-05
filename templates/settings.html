@@ -258,7 +258,10 @@
     <div style="font-size:11px;color:var(--muted);margin:4px 0 12px 88px">
       Create a webhook in Discord: Server Settings → Integrations → Webhooks → Copy URL
     </div>
-    <button class="btn" onclick="saveDiscord()">Save &amp; Test</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" onclick="saveDiscord()">Save</button>
+      <button class="btn green" onclick="testDiscord()">Test</button>
+    </div>
   </div>
 
   <div class="panel">
@@ -416,15 +419,18 @@ async function saveDiscord() {
   const url = document.getElementById('discordUrl').value;
   const body = { discord_url: url };
   const res = await apiFetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-  if(res.ok) {
-    msg('Saved. Testing notification...', 'ok');
-    const t = await apiFetch('/api/discord-test', {method:'POST'});
-    const d = await t.json();
-    if(t.ok) msg('Test message sent to Discord!', 'ok');
-    else msg(d.error || 'Test failed', 'err');
-  } else {
-    msg('Failed to save.', 'err');
-  }
+  if(res.ok) msg('Discord settings saved.', 'ok');
+  else msg('Failed to save.', 'err');
+}
+
+async function testDiscord() {
+  const url = document.getElementById('discordUrl').value;
+  if(!url) { msg('Enter a webhook URL first.', 'err'); return; }
+  msg('Testing...', 'ok');
+  const t = await apiFetch('/api/discord-test', {method:'POST'});
+  const d = await t.json();
+  if(t.ok) msg('Test message sent!', 'ok');
+  else msg(d.error || 'Test failed', 'err');
 }
 
 async function changePassword() {
