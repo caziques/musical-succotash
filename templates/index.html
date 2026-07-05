@@ -430,8 +430,7 @@ function renderSection(section) {
         <div class="yield-total"><span class="key">Self-consumption</span><span class="val">${(((l.day_pv_energy||0)-(l.day_grid_export||0))/(l.day_load_energy||1)*100).toFixed(0) || 0}%</span></div>
       </div>
       <div class="yield-card">
-        <h3>Lifetime Totals</h3>
-        <div class="yield-row"><span class="key">Rated Power</span><span class="val">${l.rated_power||0} W</span></div>
+        <h3>Battery Info</h3>
         <div class="yield-row"><span class="key">Float Voltage</span><span class="val">${l.battery_float_v||'--'} V</span></div>
         <div class="yield-row"><span class="key">Absorption V</span><span class="val">${l.battery_absorption_v||'--'} V</span></div>
         <div class="yield-row"><span class="key">Equalization V</span><span class="val">${l.battery_equalization_v||'--'} V</span></div>
