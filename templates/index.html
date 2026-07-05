@@ -431,13 +431,13 @@ function renderSection(section) {
       </div>
       <div class="yield-card">
         <h3>Lifetime Totals</h3>
-        <div class="yield-row"><span class="key">Total PV</span><span class="val" style="color:var(--yellow)">${l.total_pv_energy||0} kWh</span></div>
-        <div class="yield-row"><span class="key">Total Load</span><span class="val">${l.total_load_energy||0} kWh</span></div>
-        <div class="yield-row"><span class="key">Total Grid Import</span><span class="val" style="color:var(--orange)">${l.total_grid_import||0} kWh</span></div>
-        <div class="yield-row"><span class="key">Total Grid Export</span><span class="val" style="color:var(--green)">${l.total_grid_export||0} kWh</span></div>
-        <div class="yield-row"><span class="key">Total Batt Charge</span><span class="val">${l.total_battery_charge||0} kWh</span></div>
-        <div class="yield-row"><span class="key">Total Batt Discharge</span><span class="val">${l.total_battery_discharge||0} kWh</span></div>
         <div class="yield-row"><span class="key">Rated Power</span><span class="val">${l.rated_power||0} W</span></div>
+        <div class="yield-row"><span class="key">Float Voltage</span><span class="val">${l.battery_float_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Absorption V</span><span class="val">${l.battery_absorption_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Equalization V</span><span class="val">${l.battery_equalization_v||'--'} V</span></div>
+        <div class="yield-row"><span class="key">Max Charge</span><span class="val">${l.battery_max_charge_a||'--'} A</span></div>
+        <div class="yield-row"><span class="key">Max Discharge</span><span class="val">${l.battery_max_discharge_a||'--'} A</span></div>
+        <div class="yield-row"><span class="key">BMS Protocol</span><span class="val">${l.bms_protocol||'--'}</span></div>
       </div>
     </div>
 
