@@ -7,6 +7,38 @@ from pymodbus.client import ModbusSerialClient
 
 logger = logging.getLogger("reader")
 
+BMS_PROTOCOLS = {
+    0: "PYLON CAN", 1: "SACRED SUN RS485", 3: "DYNESS CAN",
+    6: "GenixGreen RS485", 12: "PYLON RS485", 13: "VISION CAN",
+    14: "WATTSONIC RS485", 15: "UNIPOWER RS485", 17: "LD RS485",
+    19: "UNKNOWN RS485",
+}
+
+AUX_USAGE = {0: "Disabled", 1: "Smart Load", 2: "Generator"}
+
+FAULT_CODES = {
+    13: "Working mode change", 18: "AC over current", 20: "DC over current",
+    23: "AC leak current", 24: "DC insulation impedance",
+    26: "DC busbar imbalanced", 29: "Parallel comms cable",
+    35: "No AC grid", 42: "AC line low voltage",
+    47: "AC freq high/low", 56: "DC busbar voltage low",
+    63: "ARC fault", 64: "Heat sink temp failure",
+}
+
+
+def _decode_faults(regs: tuple[int, ...]) -> str:
+    faults = []
+    off = 0
+    for b16 in regs:
+        for bit in range(16):
+            if b16 & (1 << bit):
+                n = bit + off + 1
+                msg = FAULT_CODES.get(n, "")
+                faults.append(f"F{n:02d} {msg}".strip())
+        off += 16
+    return ", ".join(faults) if faults else "None"
+
+
 SENSOR_DEFINITIONS = {
     "rated_power":       {"reg": 16, "count": 2, "scale": 0.1, "unit": "W", "signed": False},
     "date_time":         {"reg": 22, "count": 3, "unit": "", "signed": False, "is_datetime": True},
@@ -62,6 +94,34 @@ SENSOR_DEFINITIONS = {
     "total_grid_export":        {"reg": 81,  "count": 2, "scale": 0.1, "unit": "kWh", "signed": False},
     "total_load_energy":        {"reg": 85,  "count": 2, "scale": 0.1, "unit": "kWh", "signed": False},
     "total_pv_energy":          {"reg": 96,  "count": 2, "scale": 0.1, "unit": "kWh", "signed": False},
+
+    # Faults
+    "fault":               {"reg": 103, "count": 4, "unit": "", "signed": False, "is_fault": True},
+
+    # Battery settings
+    "battery_equalization_v":  {"reg": 201, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
+    "battery_absorption_v":    {"reg": 202, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
+    "battery_float_v":         {"reg": 203, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
+    "battery_max_charge_a":    {"reg": 210, "count": 1, "unit": "A", "signed": False},
+    "battery_max_discharge_a": {"reg": 211, "count": 1, "unit": "A", "signed": False},
+    "battery_shutdown_cap":    {"reg": 217, "count": 1, "unit": "%", "signed": False},
+    "battery_restart_cap":     {"reg": 218, "count": 1, "unit": "%", "signed": False},
+    "battery_low_cap":         {"reg": 219, "count": 1, "unit": "%", "signed": False},
+    "battery_shutdown_v":      {"reg": 220, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
+    "battery_restart_v":       {"reg": 221, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
+    "battery_low_v":           {"reg": 222, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
+    "battery_charging_v":      {"reg": 312, "count": 1, "scale": 0.01, "unit": "V", "signed": False},
+
+    # BMS
+    "bms_protocol":        {"reg": 325, "count": 1, "unit": "", "signed": False, "is_bms_proto": True},
+
+    # Settings / status
+    "inverter_enabled":    {"reg": 43,  "count": 1, "unit": "", "signed": False, "is_bool": True},
+    "grid_charge_enabled": {"reg": 232, "count": 1, "unit": "", "signed": False, "bitmask": 1},
+    "aux_port_usage":      {"reg": 235, "count": 1, "unit": "", "signed": False},
+    "priority_load":       {"reg": 243, "count": 1, "unit": "", "signed": False, "bitmask": 1},
+    "solar_export":        {"reg": 247, "count": 1, "unit": "", "signed": False, "bitmask": 1},
+    "use_timer":           {"reg": 248, "count": 1, "unit": "", "signed": False, "bitmask": 1},
 }
 
 
@@ -200,11 +260,28 @@ class InverterReader:
                 if defn.get("unit") == "°C":
                     value = round(value - 100, 1)
 
+                # Bitmask sensors
+                if "bitmask" in defn:
+                    value = 1 if (value & defn["bitmask"]) else 0
+
+                # Fault decoding
+                if defn.get("is_fault"):
+                    value = _decode_faults(regs)
+
+                # BMS protocol
+                if defn.get("is_bms_proto"):
+                    value = BMS_PROTOCOLS.get(value, f"Unknown ({value})")
+
                 result[name] = value
             except Exception as e:
                 logger.warning("Parse error for %s: %s", name, e)
 
         if len(result) <= 2:
             result["read_ok"] = False
+
+        # AUX port decoding
+        aux = result.get("aux_port_usage")
+        if aux is not None:
+            result["aux_port_usage"] = AUX_USAGE.get(aux, f"Unknown ({aux})")
 
         return result
