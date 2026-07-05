@@ -175,7 +175,7 @@ class InverterReader:
         # Parse individual sensors from batched data
         for name, defn in SENSOR_DEFINITIONS.items():
             try:
-                reg_start = defn["reg"]
+                reg_start = defn["reg"] + self.register_offset
                 count = defn["count"]
                 regs = tuple(raw_data.get(reg_start + i, 0) for i in range(count))
                 if all(v == 0 for v in regs) and not all(reg_start + i in raw_data for i in range(count)):
