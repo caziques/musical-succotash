@@ -229,6 +229,7 @@
     <a class="nav-link" data-section="energy"><span class="icon">&#128200;</span><span>Energy & Yield</span></a>
     <a class="nav-link" data-section="totals"><span class="icon">&#128202;</span><span>Daily Totals</span></a>
     <a class="nav-link" data-section="system"><span class="icon">&#9881;</span><span>System Health</span></a>
+    <a class="nav-link" data-section="forecast"><span class="icon">&#9202;</span><span>Forecast</span></a>
     <a class="nav-link" data-section="automation" id="navAutomation" style="display:none"><span class="icon">&#9889;</span><span>Automation</span></a>
     <a href="/settings" id="navSettings" class="nav-link" style="display:none"><span class="icon">&#9881;</span><span>Settings</span></a>
     <a href="/logout" class="nav-link"><span class="icon">&#128682;</span><span>Logout</span></a>
@@ -570,6 +571,15 @@ function renderSection(section) {
       </table>
     </div>`;
 
+  } else if(section === 'forecast') {
+    html += `
+    <div class="yield-grid">
+      <div class="yield-card">
+        <h3>Battery Forecast</h3>
+        <div id="forecastContent" style="font-size:13px;color:var(--muted)">Loading...</div>
+      </div>
+    </div>`;
+
   } else if(section === 'system') {
     const l = latestData || {};
     html += `
@@ -737,6 +747,10 @@ function drawCharts(section, labels) {
     loadAutomationData();
   }
 
+  if(section === 'forecast') {
+    loadForecast();
+  }
+
   if(section === 'system') {
     createLineChart('chart-system-temps', '', [
       makeDataset('DC Transformer', h.map(r=>v(r,'dc_transformer_temp')),0),
@@ -760,6 +774,42 @@ function drawCharts(section, labels) {
 function destroyAllCharts() {
   Object.keys(allCharts).forEach(k => { if(allCharts[k]) allCharts[k].destroy(); });
   allCharts = {};
+}
+
+function loadForecast() {
+  const l = latestData;
+  if(!l) return;
+  const soc = l.battery_soc || 0;
+  const battPower = l.battery_power || 0;
+  const loadPower = l.load_power || 0;
+  const pvTotal = (l.pv1_power||0) + (l.pv2_power||0);
+  const shutdownSOC = l.battery_shutdown_cap || 20;
+  const battCapWh = 4800;
+
+  let html = '';
+  if(battPower > 50) {
+    const hrs = (soc - shutdownSOC) / 100 * battCapWh / battPower;
+    const end = new Date(Date.now() + hrs * 3600000);
+    html = `<span class="yield-row"><span class="key">Status</span><span class="val" style="color:var(--orange)">Discharging</span></span>
+      <span class="yield-row"><span class="key">Time to Shutdown</span><span class="val" style="color:var(--red)">${Math.floor(hrs)}h ${Math.round(hrs%1*60)}m</span></span>
+      <span class="yield-row"><span class="key">Shutdown at</span><span class="val">${end.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></span>
+      <span class="yield-row"><span class="key">Net Drain</span><span class="val">${battPower}W</span></span>
+      <span class="yield-row"><span class="key">Shutdown SOC</span><span class="val">${shutdownSOC}%</span></span>`;
+  } else if(battPower < -50) {
+    const hrs = (100 - soc) / 100 * battCapWh / Math.abs(battPower);
+    const end = new Date(Date.now() + hrs * 3600000);
+    html = `<span class="yield-row"><span class="key">Status</span><span class="val" style="color:var(--green)">Charging</span></span>
+      <span class="yield-row"><span class="key">Time to Full</span><span class="val" style="color:var(--green)">${Math.floor(hrs)}h ${Math.round(hrs%1*60)}m</span></span>
+      <span class="yield-row"><span class="key">Full at</span><span class="val">${end.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></span>
+      <span class="yield-row"><span class="key">Charge Power</span><span class="val" style="color:var(--green)">${Math.abs(battPower)}W</span></span>`;
+  } else {
+    html = `<span class="yield-row"><span class="key">Status</span><span class="val" style="color:var(--muted)">Balanced</span></span>
+      <span class="yield-row"><span class="key">Battery SOC</span><span class="val">${soc}%</span></span>
+      <span class="yield-row"><span class="key">Load</span><span class="val">${loadPower}W</span></span>
+      <span class="yield-row"><span class="key">Solar</span><span class="val">${pvTotal}W</span></span>`;
+  }
+  const el = document.getElementById('forecastContent');
+  if(el) el.innerHTML = html;
 }
 
 // Navigation
@@ -1020,7 +1070,7 @@ initFontSize();
 
 // Handle hash-based navigation from other pages
 const hash = window.location.hash.replace('#', '');
-const validSections = ['overview','power','battery','solar','grid','energy','totals','automation','system'];
+const validSections = ['overview','power','battery','solar','grid','energy','totals','forecast','automation','system'];
 if(hash && validSections.includes(hash)) {
   currentSection = hash;
   document.getElementById('sectionTitle').textContent = 
