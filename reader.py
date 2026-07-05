@@ -197,7 +197,7 @@ class InverterReader:
                     value = round(value * defn["scale"], 2)
 
                 # Temperature sensors have a -100 offset (reg value 1143 = 14.3°C)
-                if "temp" in defn.get("unit", ""):
+                if defn.get("unit") == "°C":
                     value = round(value - 100, 1)
 
                 result[name] = value
