@@ -127,7 +127,7 @@ def read_loop(reader, database: Database, interval: int, retention_days: int, st
             return
         try:
             body = json.dumps({"embeds": [{"title": "Inverter Alert", "description": msg, "color": 16711680, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}]}).encode()
-            req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+            req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", "User-Agent": "InverterDashboard/1.0"})
             urllib.request.urlopen(req, timeout=5)
         except Exception:
             pass

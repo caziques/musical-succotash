@@ -549,7 +549,7 @@ def api_discord_test():
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }]
         }
-        req = urllib.request.Request(url, data=json.dumps(msg).encode(), headers={"Content-Type": "application/json"})
+        req = urllib.request.Request(url, data=json.dumps(msg).encode(), headers={"Content-Type": "application/json", "User-Agent": "InverterDashboard/1.0"})
         urllib.request.urlopen(req, timeout=5)
         return jsonify({"ok": True})
     except Exception as e:
