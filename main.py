@@ -295,15 +295,16 @@ def main():
     if not args.serve_only:
         run_mode = database.get_setting("run_mode") or "simulate"
         port = database.get_setting("port") or config.get("inverter", {}).get("port", "/dev/ttyUSB0")
+        slave_id = int(database.get_setting("slave_id") or config.get("inverter", {}).get("slave_id", 1))
+        baudrate = int(database.get_setting("baudrate") or config.get("inverter", {}).get("baudrate", 9600))
+        reg_offset = int(database.get_setting("register_offset") or "1")
 
         if args.simulate:
             reader = SimulatedReader()
             logger.info("Using SIMULATED inverter data (--simulate flag)")
         elif run_mode == "live":
-            slave_id = int(database.get_setting("slave_id") or config.get("inverter", {}).get("slave_id", 1))
-            baudrate = int(database.get_setting("baudrate") or config.get("inverter", {}).get("baudrate", 9600))
-            logger.info("Connecting to inverter on %s (id=%d, baud=%d)...", port, slave_id, baudrate)
-            reader = InverterReader(port=port, slave_id=slave_id, baudrate=baudrate)
+            logger.info("Connecting to inverter on %s (id=%d, baud=%d, offset=%d)...", port, slave_id, baudrate, reg_offset)
+            reader = InverterReader(port=port, slave_id=slave_id, baudrate=baudrate, register_offset=reg_offset)
             if not reader.connect():
                 logger.error("Failed to connect to inverter on %s. Check wiring.", port)
                 reader = SimulatedReader()
@@ -317,10 +318,8 @@ def main():
                 ports.extend(_glob.glob(p))
             if ports:
                 port = ports[0]
-                slave_id = int(database.get_setting("slave_id") or config.get("inverter", {}).get("slave_id", 1))
-                baudrate = int(database.get_setting("baudrate") or config.get("inverter", {}).get("baudrate", 9600))
                 logger.info("Auto-detected port %s, trying LIVE mode...", port)
-                reader = InverterReader(port=port, slave_id=slave_id, baudrate=baudrate)
+                reader = InverterReader(port=port, slave_id=slave_id, baudrate=baudrate, register_offset=reg_offset)
                 if reader.connect():
                     database.set_setting("port", port)
                     database.set_setting("run_mode", "live")

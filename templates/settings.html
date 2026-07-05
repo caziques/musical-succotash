@@ -183,6 +183,13 @@
       <input type="number" id="slaveId" min="1" max="247" placeholder="1">
     </div>
     <div class="form-row">
+      <label for="regOffset">Register Offset</label>
+      <select id="regOffset">
+        <option value="0">0 (matches documentation)</option>
+        <option value="1" selected>1 (Sunsynk firmware +1)</option>
+      </select>
+    </div>
+    <div class="form-row">
       <label for="pollInterval">Poll Interval (seconds)</label>
       <input type="number" id="pollInterval" min="1" max="3600" placeholder="5">
     </div>
@@ -345,6 +352,7 @@ async function loadAll() {
   document.getElementById('port').value = settings.port || '/dev/ttyUSB0';
   document.getElementById('baudrate').value = settings.baudrate || '9600';
   document.getElementById('slaveId').value = settings.slave_id || '1';
+  document.getElementById('regOffset').value = settings.register_offset || '1';
   document.getElementById('inverterType').value = settings.inverter_type || 'Sunsynk';
   document.getElementById('pollInterval').value = settings.poll_interval || '5';
   document.getElementById('retention').value = settings.retention_days || '365';
